@@ -247,6 +247,7 @@ Trigger::Trigger (uint32_t n, TriggerBox& b)
 	, _loop_cnt (0)
 	, _ui (0)
 	, _explicitly_stopped (false)
+	, _scene_switch (false)
 	, _pending_velocity_gain (1.0)
 	, _velocity_gain (1.0)
 	, _cue_launched (false)
@@ -637,6 +638,12 @@ Trigger::set_ui (void* p)
 }
 
 void
+Trigger::set_scene_switch (bool yn)
+{
+	_scene_switch = yn;
+}
+
+void
 Trigger::bang (float velocity)
 {
 	if (!_region) {
@@ -887,6 +894,8 @@ Trigger::shutdown_from_fwd ()
 	_loop_cnt = 0;
 	_cue_launched = false;
 	_pending_velocity_gain = _velocity_gain = 1.0;
+	_scene_switch = false;
+	_explicitly_stopped = false;
 	DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1/%2 [%3] shuts down\n", _box.order(), index(), name()));
 	send_property_change (ARDOUR::Properties::running);
 }
@@ -949,6 +958,7 @@ Trigger::begin_switch (TriggerPtr nxt)
 	   stop, but wait for quantization first.
 	*/
 	_state = WaitingToSwitch;
+	_explicitly_stopped = true;
 	_nxt_quantization = nxt->_quantization;
 	DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 begin_switch() requested state %2\n", index(), enum_2_string (_state)));
 	send_property_change (ARDOUR::Properties::running);
@@ -1289,50 +1299,69 @@ Trigger::maybe_compute_next_transition (samplepos_t start_sample, Temporal::Beat
 void
 Trigger::when_stopped_during_run (BufferSet& bufs, pframes_t dest_offset)
 {
-	if (_state == Stopped || _state == Stopping) {
+	switch (_state) {
+	case Stopped:
+	case Stopping:
+	case WaitingToSwitch:
+		break;
+	default:
+		return;
+	}
 
-		if ((_state == Stopped) && !_explicitly_stopped && (launch_style() == Trigger::Gate || launch_style() == Trigger::Repeat)) {
+	DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 stopped during run, state %2 explicit %3 ls %4 lc %5 fc %6 ss %7\n",
+	                                              index(),
+	                                              enum_2_string (_state),
+	                                              _explicitly_stopped,
+	                                              enum_2_string (launch_style()),
+	                                              _loop_cnt,
+	                                              _follow_count,
+	                                              _scene_switch));
 
-			jump_start ();
-			DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 was stopped, repeat/gate ret\n", index()));
+	if ((_state == Stopped) && _scene_switch) {
+
+		DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 stopped by scene switch\n", index()));
+		shutdown (bufs, dest_offset);
+
+	} else if ((_state == Stopped) && !_explicitly_stopped && (launch_style() == Trigger::Gate || launch_style() == Trigger::Repeat)) {
+
+		jump_start ();
+		DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 was stopped, repeat/gate ret\n", index()));
+
+	} else {
+
+		if ((launch_style() != Repeat) && (launch_style() != Gate) && (_loop_cnt == _follow_count)) {
+
+			/* have played the specified number of times, we're done */
+
+			DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 loop cnt %2 satisfied, now stopped with ls %3\n", index(), _follow_count, enum_2_string (launch_style())));
+			shutdown (bufs, dest_offset);
+
+		} else if (_state == Stopping) {
+
+			/* did not reach the end of the data. Presumably
+			 * another trigger was explicitly queued, and we
+			 * stopped
+			 */
+
+			DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 not at end, but ow stopped\n", index()));
+			shutdown (bufs, dest_offset);
 
 		} else {
 
-			if ((launch_style() != Repeat) && (launch_style() != Gate) && (_loop_cnt == _follow_count)) {
+			/* reached the end, but we haven't done that enough
+			 * times yet for a follow action/stop to take
+			 * effect. Time to get played again.
+			 */
 
-				/* have played the specified number of times, we're done */
-
-				DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 loop cnt %2 satisfied, now stopped with ls %3\n", index(), _follow_count, enum_2_string (launch_style())));
-				shutdown (bufs, dest_offset);
-
-
-			} else if (_state == Stopping) {
-
-				/* did not reach the end of the data. Presumably
-				 * another trigger was explicitly queued, and we
-				 * stopped
-				 */
-
-				DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 not at end, but ow stopped\n", index()));
-				shutdown (bufs, dest_offset);
-
-			} else {
-
-				/* reached the end, but we haven't done that enough
-				 * times yet for a follow action/stop to take
-				 * effect. Time to get played again.
-				 */
-
-				DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 was stopping, now waiting to retrigger, loop cnt %2 fc %3\n", index(), _loop_cnt, _follow_count));
-				/* we will "restart" at the beginning of the
-				   next iteration of the trigger.
-				*/
-				_state = WaitingToStart;
-				retrigger ();
-			}
-
-			send_property_change (ARDOUR::Properties::running);
+			DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 was stopping, now waiting to retrigger, loop cnt %2 fc %3\n", index(), _loop_cnt, _follow_count));
+			/* we will "restart" at the beginning of the
+			   next iteration of the trigger.
+			*/
+			_state = WaitingToStart;
+			retrigger ();
 		}
+
+		send_property_change (ARDOUR::Properties::running);
 	}
 }
 
@@ -4527,15 +4556,43 @@ TriggerBox::set_from_path (uint32_t slot, std::string const & path)
 			src_list.push_back (src);
 		}
 
+		/* take all the sources we have and package them up as a whole file region */
+
+		std::string wf_region_name = region_name_from_path (path, false, false);
+
+		/* we checked in import_sndfiles() that there were not too many */
+
+		while (RegionFactory::region_by_name (wf_region_name)) {
+			wf_region_name = bump_name_once (wf_region_name, '.');
+		}
+
 		PropertyList plist;
 
-		plist.add (Properties::start, 0);
-		plist.add (Properties::length, src_list.front()->length ());
-		plist.add (Properties::name, basename_nosuffix (path));
-		plist.add (Properties::layer, 0);
-		plist.add (Properties::layering_index, 0);
+		plist.add (ARDOUR::Properties::start, timecnt_t (src_list[0]->type() == DataType::AUDIO ? Temporal::AudioTime : Temporal::BeatTime));
+		plist.add (ARDOUR::Properties::length, src_list[0]->length ());
+		plist.add (ARDOUR::Properties::name, wf_region_name);
+		plist.add (ARDOUR::Properties::layer, 0);
+		plist.add (ARDOUR::Properties::whole_file, true);
+		plist.add (ARDOUR::Properties::external, true);
+		plist.add (ARDOUR::Properties::opaque, true);
 
-		std::shared_ptr<Region> the_region (RegionFactory::create (src_list, plist, true));
+		std::shared_ptr<Region> r = RegionFactory::create (src_list, plist);
+
+		if (std::dynamic_pointer_cast<AudioRegion>(r)) {
+			std::dynamic_pointer_cast<AudioRegion>(r)->special_set_position(src_list[0]->natural_position());
+		}
+
+		/* Now create a non-whole-file region */
+
+		PropertyList plist2;
+
+		plist2.add (Properties::start, 0);
+		plist2.add (Properties::length, src_list.front()->length ());
+		plist2.add (Properties::name, basename_nosuffix (path));
+		plist2.add (Properties::layer, 0);
+		plist2.add (Properties::layering_index, 0);
+
+		std::shared_ptr<Region> the_region (RegionFactory::create (src_list, plist2, true));
 
 		all_triggers[slot]->set_region (the_region);
 
@@ -5074,6 +5131,9 @@ TriggerBox::run_cycle (BufferSet& bufs, samplepos_t start_sample, samplepos_t en
 		if (_active_scene < (int32_t) all_triggers.size()) {
 			if (!all_triggers[_active_scene]->cue_isolated()) {
 				if (all_triggers[_active_scene]->playable()) {
+					if (_currently_playing) {
+						_currently_playing->set_scene_switch (true);
+					}
 					all_triggers[_active_scene]->bang ();
 				} else {
 					stop_all_quantized ();  //empty slot, this should work as a Stop for the running clips
