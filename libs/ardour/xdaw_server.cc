@@ -174,6 +174,12 @@ auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
       }
     }
 
+    // Get pan (azimuth: 0=left, 0.5=center, 1=right -> XDAW: -1 to +1)
+    if (auto pan_ctrl = route->pan_azimuth_control()) {
+      auto azimuth = pan_ctrl->get_value();  // 0 to 1
+      track.pan = (azimuth - 0.5) * 2.0;     // -1 to +1
+    }
+
     // Get regions (clips) from track's playlist
     if (auto ardour_track = std::dynamic_pointer_cast<Track>(route)) {
       if (auto playlist = ardour_track->playlist()) {
@@ -281,6 +287,12 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
     if (coef > 0.0f) {
       track.volume = 20.0 * std::log10(coef);
     }
+  }
+
+  // Get pan (azimuth: 0=left, 0.5=center, 1=right -> XDAW: -1 to +1)
+  if (auto pan_ctrl = route->pan_azimuth_control()) {
+    auto azimuth = pan_ctrl->get_value();
+    track.pan = (azimuth - 0.5) * 2.0;
   }
 
   // Get clips
@@ -403,6 +415,20 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
                 gain_ctrl->set_value(coef, PBD::Controllable::NoGroup);
               }
             }
+            if (cmd.pan.has_value()) {
+              if (auto pan_ctrl = route->pan_azimuth_control()) {
+                // Convert XDAW pan (-1 to +1) to Ardour azimuth (0 to 1)
+                auto azimuth = (*cmd.pan + 1.0) / 2.0;
+                pan_ctrl->set_value(azimuth, PBD::Controllable::NoGroup);
+              }
+            }
+            if (cmd.armed.has_value()) {
+              if (auto ardour_track = std::dynamic_pointer_cast<Track>(route)) {
+                if (auto rec_ctrl = ardour_track->rec_enable_control()) {
+                  rec_ctrl->set_value(*cmd.armed ? 1.0 : 0.0, PBD::Controllable::NoGroup);
+                }
+              }
+            }
           }
         }
         break;
@@ -437,9 +463,15 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           case xdaw::TransportActionType::SetLoopActive:
             _session->request_play_loop(action.bool_value);
             break;
-          case xdaw::TransportActionType::SetTempo:
-            // TODO: Implement tempo change
+          case xdaw::TransportActionType::SetTempo: {
+            auto bpm = std::max(0.01, action.double_value);
+            auto tmap = Temporal::TempoMap::write_copy();
+            auto note_type = tmap->metric_at(Temporal::timepos_t(0)).tempo().note_type();
+            auto new_tempo = Temporal::Tempo(bpm, note_type);
+            tmap->set_tempo(new_tempo, Temporal::timepos_t());
+            Temporal::TempoMap::update(tmap);
             break;
+          }
           default:
             break;
         }
@@ -585,10 +617,21 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         break;
       }
 
-      case xdaw::EditOperationType::DeleteClip:
-        // TODO: Implement region deletion
-        response.error_message = "DeleteClip not yet implemented";
-        return response;
+      case xdaw::EditOperationType::DeleteClip: {
+        const auto& cmd = op.delete_clip;
+        auto region = RegionFactory::region_by_id(PBD::ID(cmd.clip_id));
+        if (!region) {
+          response.error_message = "Clip not found: " + cmd.clip_id;
+          return response;
+        }
+        auto playlist = region->playlist();
+        if (!playlist) {
+          response.error_message = "Clip not in any playlist: " + cmd.clip_id;
+          return response;
+        }
+        playlist->remove_region(region);
+        break;
+      }
 
       default:
         // Ignore unimplemented operations
