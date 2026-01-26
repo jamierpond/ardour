@@ -34,6 +34,7 @@ struct Track;
 struct EditBatch;
 struct EditResponse;
 struct RenderRequest;
+struct RenderOperation;
 }  // namespace xdaw
 
 namespace ARDOUR {
@@ -80,14 +81,25 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
   auto build_transport_state() -> xdaw::TransportState;
   auto get_track_detail(const std::string& track_id) -> xdaw::Track;
   auto apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse;
-  auto render_region(
-      const xdaw::RenderRequest& req,
-      std::function<void(const std::vector<float>&, bool, const std::string&)>
-          writer) -> void;
+
+  // Async render: starts export and returns operation ID immediately.
+  // Completion notification is sent via server_->push_notification().
+  auto start_render(const xdaw::RenderRequest& req) -> xdaw::RenderOperation;
+
+  // Called periodically to check for completed renders and send notifications
+  auto check_pending_renders() -> void;
 
   std::unique_ptr<xdaw::Server> server_;
   std::atomic<bool> tasks_pending_{false};
   std::int32_t port_;
+
+  // Track pending render operations
+  struct PendingRender {
+    std::string operation_id;
+    std::string output_path;
+    bool stream_response;
+  };
+  std::vector<PendingRender> pending_renders_;
 };
 
 }  // namespace ARDOUR

@@ -21,8 +21,8 @@
 #include <xdaw/server.h>
 #include <xdaw/types.h>
 
+#include <chrono>
 #include <fstream>
-#include <unistd.h>
 
 #include <glibmm/miscutils.h>
 
@@ -89,9 +89,7 @@ auto XDAWServer::setup_handlers() -> void {
       [this](const xdaw::EditBatch& batch) { return apply_edits(batch); });
 
   server_->set_render_handler(
-      [this](const xdaw::RenderRequest& req, auto writer) {
-        render_region(req, writer);
-      });
+      [this](const xdaw::RenderRequest& req) { return start_render(req); });
 
   server_->set_notification_handler([this]() {
     tasks_pending_.store(true, std::memory_order_release);
@@ -106,6 +104,7 @@ auto XDAWServer::is_running() const -> bool { return server_->is_running(); }
 
 auto XDAWServer::process_pending_tasks() -> void {
   server_->process_pending_tasks();
+  check_pending_renders();
 }
 
 auto XDAWServer::has_pending_tasks() -> bool {
@@ -648,45 +647,32 @@ static auto get_sample_format_string(int bit_depth) -> std::string {
   }
 }
 
-auto XDAWServer::render_region(
-    const xdaw::RenderRequest& req,
-    std::function<void(const std::vector<float>&, bool, const std::string&)>
-        writer) -> void {
-  std::cerr << "[XDAW] render_region called: start_beat=" << req.start_beat
+auto XDAWServer::start_render(const xdaw::RenderRequest& req)
+    -> xdaw::RenderOperation {
+  auto result = xdaw::RenderOperation{};
+
+  // Generate unique operation ID
+  static std::atomic<uint64_t> op_counter{0};
+  result.operation_id =
+      "render_" + std::to_string(++op_counter) + "_" +
+      std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+
+  std::cerr << "[XDAW] start_render called: op_id=" << result.operation_id
+            << " start_beat=" << req.start_beat
             << " length_beats=" << req.length_beats << std::endl;
 
   if (!_session) {
     std::cerr << "[XDAW] ERROR: No session!" << std::endl;
-    writer({}, true, "");
-    return;
-  }
-
-  // Debug: List all tracks and their regions
-  auto routes = _session->get_routes();
-  std::cerr << "[XDAW] Session has " << routes->size() << " routes" << std::endl;
-  for (const auto& route : *routes) {
-    std::cerr << "[XDAW]   Route: " << route->name() << " (muted=" << route->muted()
-              << ", soloed=" << route->soloed() << ")" << std::endl;
-    if (auto track = std::dynamic_pointer_cast<Track>(route)) {
-      if (auto playlist = track->playlist()) {
-        auto region_list = playlist->region_list();
-        std::cerr << "[XDAW]     Playlist: " << playlist->name()
-                  << " with " << region_list->size() << " regions" << std::endl;
-        for (const auto& region : *region_list) {
-          std::cerr << "[XDAW]       Region: " << region->name()
-                    << " pos=" << region->position().samples()
-                    << " len=" << region->length().samples() << std::endl;
-        }
-      }
-    }
+    result.error_message = "No session available";
+    return result;
   }
 
   // Convert beats to samples
   auto tmap = Temporal::TempoMap::use();
   if (!tmap) {
     std::cerr << "[XDAW] ERROR: No tempo map!" << std::endl;
-    writer({}, true, "");
-    return;
+    result.error_message = "No tempo map available";
+    return result;
   }
 
   auto start_beats = Temporal::Beats::from_double(req.start_beat);
@@ -695,21 +681,16 @@ auto XDAWServer::render_region(
   auto start_samples = tmap->sample_at(start_beats);
   auto end_samples = tmap->sample_at(end_beats);
 
-  std::cerr << "[XDAW] Render range: " << start_samples << " to " << end_samples
-            << " samples (sr=" << _session->sample_rate() << ")" << std::endl;
-
   // Add tail if requested
   if (req.tail_length_seconds > 0) {
     auto tail_samples = static_cast<samplepos_t>(req.tail_length_seconds *
                                                   _session->sample_rate());
     end_samples += tail_samples;
-    std::cerr << "[XDAW] Added tail: " << tail_samples << " samples" << std::endl;
   }
 
   if (start_samples >= end_samples) {
-    std::cerr << "[XDAW] ERROR: Invalid range!" << std::endl;
-    writer({}, true, "");
-    return;
+    result.error_message = "Invalid render range";
+    return result;
   }
 
   // Get export handler
@@ -723,14 +704,14 @@ auto XDAWServer::render_region(
   auto ccp = handler->add_channel_config();
   auto master_out = _session->master_out();
   if (!master_out) {
-    writer({}, true, "");
-    return;
+    result.error_message = "No master output";
+    return result;
   }
 
   auto output = master_out->output().get();
   if (!output) {
-    writer({}, true, "");
-    return;
+    result.error_message = "No master output port";
+    return result;
   }
 
   for (uint32_t n = 0; n < output->n_ports().n_audio(); ++n) {
@@ -747,7 +728,6 @@ auto XDAWServer::render_region(
   if (!req.output_path.empty()) {
     output_folder = Glib::path_get_dirname(req.output_path);
     output_name = Glib::path_get_basename(req.output_path);
-    // Remove extension from name if present
     auto dot_pos = output_name.rfind('.');
     if (dot_pos != std::string::npos) {
       output_name = output_name.substr(0, dot_pos);
@@ -757,7 +737,6 @@ auto XDAWServer::render_region(
     output_name = "xdaw_render_" + std::to_string(start_samples);
   }
 
-  // Create directory if needed
   g_mkdir_with_parents(output_folder.c_str(), 0755);
 
   // Create filename
@@ -777,10 +756,6 @@ auto XDAWServer::render_region(
           : std::to_string(static_cast<int>(_session->sample_rate()));
   auto normalize = req.processing.peak.has_value() ? "true" : "false";
 
-  // IMPORTANT: Ardour has two ID types:
-  //   - PBD::ID: numeric strings ("12345") for tracks, regions, routes
-  //   - PBD::UUID: hex format ("deadbeef-0000-4000-8000-...") for export presets
-  // Export XML must use valid UUID format or boost::uuid throws "Invalid UUID string"
   auto format_xml =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
       "<ExportFormatSpecification name=\"XDAW-EXPORT\" "
@@ -826,78 +801,83 @@ auto XDAWServer::render_region(
 
   XMLTree tree;
   if (!tree.read_buffer(format_xml.c_str())) {
-    writer({}, true, "");
-    return;
+    result.error_message = "Failed to parse format specification";
+    return result;
   }
 
   auto fmp = handler->add_format(*tree.root());
   fmp->set_soundcloud_upload(false);
 
-  // Configure the export
   handler->add_export_config(tsp, ccp, fmp, fnp, nullptr);
 
-  std::cerr << "[XDAW] Starting export to: " << output_folder << "/" << output_name << ext << std::endl;
-
-  // Run export
-  if (0 != handler->do_export()) {
-    std::cerr << "[XDAW] ERROR: do_export() failed!" << std::endl;
-    writer({}, true, "");
-    return;
-  }
-
-  // Wait for export to complete
-  auto status = _session->get_export_status();
-  std::cerr << "[XDAW] Waiting for export..." << std::endl;
-  while (status->running()) {
-    usleep(10000);
-  }
-  status->finish(TRS_UI);
-
-  if (status->aborted()) {
-    std::cerr << "[XDAW] ERROR: Export aborted!" << std::endl;
-    writer({}, true, "");
-    return;
-  }
-
-  // Get the output path
   auto final_path = Glib::build_filename(output_folder, output_name + ext);
-  std::cerr << "[XDAW] Export complete! File: " << final_path << std::endl;
+  std::cerr << "[XDAW] Starting async export to: " << final_path << std::endl;
 
-  // Check file size
-  std::ifstream check_file(final_path, std::ios::binary | std::ios::ate);
-  if (check_file) {
-    auto file_size = check_file.tellg();
-    std::cerr << "[XDAW] Output file size: " << file_size << " bytes" << std::endl;
+  // Start the export (non-blocking!)
+  if (0 != handler->do_export()) {
+    result.error_message = "do_export() failed";
+    return result;
   }
 
-  // Handle streaming if requested
-  if (req.stream_response) {
-    std::ifstream file(final_path, std::ios::binary);
-    if (!file) {
-      writer({}, true, "");
-      return;
-    }
+  // Track this pending render - check_pending_renders will poll for completion
+  pending_renders_.push_back(PendingRender{
+      .operation_id = result.operation_id,
+      .output_path = final_path,
+      .stream_response = req.stream_response,
+  });
 
-    std::vector<float> buffer(4096);
-    while (file) {
-      file.read(reinterpret_cast<char*>(buffer.data()),
-                static_cast<std::streamsize>(buffer.size() * sizeof(float)));
-      auto bytes_read = file.gcount();
-      if (bytes_read > 0) {
-        buffer.resize(static_cast<size_t>(bytes_read) / sizeof(float));
-        auto is_last = file.eof() || file.peek() == EOF;
-        writer(buffer, is_last, is_last ? final_path : "");
-        buffer.resize(4096);
+  std::cerr << "[XDAW] Export started, returning operation_id: "
+            << result.operation_id << std::endl;
+
+  return result;  // Return immediately, no blocking!
+}
+
+auto XDAWServer::check_pending_renders() -> void {
+  if (!_session || pending_renders_.empty()) {
+    return;
+  }
+
+  auto status = _session->get_export_status();
+
+  // If export is still running, nothing to do
+  if (status->running()) {
+    return;
+  }
+
+  // Export finished - process all pending renders
+  for (auto& pending : pending_renders_) {
+    auto complete = xdaw::RenderComplete{};
+    complete.operation_id = pending.operation_id;
+
+    if (status->aborted()) {
+      complete.success = false;
+      complete.error_message = "Export was aborted";
+      std::cerr << "[XDAW] Render " << pending.operation_id << " aborted"
+                << std::endl;
+    } else {
+      complete.success = true;
+      complete.output_path = pending.output_path;
+      std::cerr << "[XDAW] Render " << pending.operation_id
+                << " complete: " << pending.output_path << std::endl;
+
+      // Read audio data if streaming was requested
+      if (pending.stream_response) {
+        std::ifstream file(pending.output_path, std::ios::binary);
+        if (file) {
+          complete.audio_data = std::vector<uint8_t>(
+              std::istreambuf_iterator<char>(file),
+              std::istreambuf_iterator<char>());
+        }
       }
     }
 
-    // Delete temp file if no output path was specified
-    if (req.output_path.empty()) {
-      g_remove(final_path.c_str());
-    }
-  } else {
-    writer({}, true, final_path);
+    // Push completion notification to all subscribers
+    server_->push_notification(
+        xdaw::Notification::make_render_complete(complete));
   }
+
+  status->finish(TRS_UI);
+  pending_renders_.clear();
 }
 
 }  // namespace ARDOUR

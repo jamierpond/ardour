@@ -938,6 +938,8 @@ def options(opt):
         dest='qm_dsp_include', default='/usr/include/qm-dsp',
         help='Directory where the header files of qm-dsp can be found')
     opt.add_option ('--use-lld', action='store_true', default=False, dest='use_lld', help='Use LLD linker instead of ld (Linux only)')
+    opt.add_option('--xdaw-sdk', type='string', action='store', dest='xdaw_sdk', default='',
+                    help='Path to XDAW SDK root directory (default: ../../sdk relative to this directory)')
 
     for i in children:
         opt.recurse(i)
@@ -1176,9 +1178,14 @@ def configure(conf):
     autowaf.check_pkg(conf, 'vamp-hostsdk', uselib_store='VAMPHOSTSDK', atleast_version='2.1', mandatory=True)
     autowaf.check_pkg(conf, 'rubberband', uselib_store='RUBBERBAND', mandatory=True)
 
-    # XDAW SDK (local, relative to examples/ardour/)
+    # XDAW SDK configuration
     # Uses shared library that bundles all dependencies (gRPC, protobuf, etc.)
-    xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
+    # Can be specified via --xdaw-sdk=/path/to/sdk or defaults to ../../sdk
+    from waflib import Options
+    if Options.options.xdaw_sdk:
+        xdaw_sdk_root = os.path.abspath(Options.options.xdaw_sdk)
+    else:
+        xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
     xdaw_lib_path = os.path.join(xdaw_sdk_root, '..', 'bazel-bin', 'sdk')
     conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
     conf.env.LIB_XDAW = ['xdaw_shared']
