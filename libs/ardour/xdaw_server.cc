@@ -132,6 +132,47 @@ static auto ardour_to_xdaw_track_type(std::shared_ptr<Route> route)
   return xdaw::TrackType::Return;  // Busses
 }
 
+// Helper to convert Ardour plugin type to XDAW format
+static auto ardour_to_xdaw_plugin_format(PluginType type) -> xdaw::PluginFormat {
+  switch (type) {
+    case AudioUnit:
+      return xdaw::PluginFormat::AU;
+    case Windows_VST:
+    case LXVST:
+    case MacVST:
+      return xdaw::PluginFormat::VST2;
+    case VST3:
+      return xdaw::PluginFormat::VST3;
+    case LV2:
+      return xdaw::PluginFormat::LV2;
+    case LADSPA:
+      return xdaw::PluginFormat::LADSPA;
+    case Lua:
+      return xdaw::PluginFormat::Internal;
+    default:
+      return xdaw::PluginFormat::Unspecified;
+  }
+}
+
+static auto xdaw_to_ardour_plugin_type(xdaw::PluginFormat format) -> PluginType {
+  switch (format) {
+    case xdaw::PluginFormat::AU:
+      return AudioUnit;
+    case xdaw::PluginFormat::VST2:
+      return LXVST;  // Generic VST2
+    case xdaw::PluginFormat::VST3:
+      return VST3;
+    case xdaw::PluginFormat::LV2:
+      return LV2;
+    case xdaw::PluginFormat::LADSPA:
+      return LADSPA;
+    case xdaw::PluginFormat::Internal:
+      return Lua;
+    default:
+      return LADSPA;  // Fallback
+  }
+}
+
 auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
     -> xdaw::SessionState {
   auto state = xdaw::SessionState{};
@@ -346,50 +387,6 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
 
   return track;
 }
-
-namespace {
-
-auto ardour_to_xdaw_plugin_format(PluginType type) -> xdaw::PluginFormat {
-  switch (type) {
-    case AudioUnit:
-      return xdaw::PluginFormat::AU;
-    case Windows_VST:
-    case LXVST:
-    case MacVST:
-      return xdaw::PluginFormat::VST2;
-    case VST3:
-      return xdaw::PluginFormat::VST3;
-    case LV2:
-      return xdaw::PluginFormat::LV2;
-    case LADSPA:
-      return xdaw::PluginFormat::LADSPA;
-    case Lua:
-      return xdaw::PluginFormat::Internal;
-    default:
-      return xdaw::PluginFormat::Unspecified;
-  }
-}
-
-auto xdaw_to_ardour_plugin_type(xdaw::PluginFormat format) -> PluginType {
-  switch (format) {
-    case xdaw::PluginFormat::AU:
-      return AudioUnit;
-    case xdaw::PluginFormat::VST2:
-      return LXVST;  // Generic VST2
-    case xdaw::PluginFormat::VST3:
-      return VST3;
-    case xdaw::PluginFormat::LV2:
-      return LV2;
-    case xdaw::PluginFormat::LADSPA:
-      return LADSPA;
-    case xdaw::PluginFormat::Internal:
-      return Lua;
-    default:
-      return LADSPA;  // Fallback
-  }
-}
-
-}  // namespace
 
 auto XDAWServer::get_plugins(const xdaw::PluginsRequest& req)
     -> xdaw::PluginsResponse {
