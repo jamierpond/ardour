@@ -152,3 +152,4 @@ tags
 # misc custom files git should ignore
 /local
 tools/osx_packaging/Ardour9.app/Contents
+tools/osx_packaging/Ardour-9.0.rc3.9-dbg-arm64.dmg
