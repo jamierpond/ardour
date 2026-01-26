@@ -1,6 +1,6 @@
 yapi: v1
-# Create a new audio track in Ardour
-# Tests: Edit operations - track creation
+url: grpc://localhost:50051
+service: xdaw.v1.DAWService
 rpc: ApplyEdits
 
 body:

@@ -1,5 +1,6 @@
 yapi: v1
-# Render audio from Ardour session to a file
+url: grpc://localhost:50051
+service: xdaw.v1.DAWService
 rpc: RenderAudio
 
 body:

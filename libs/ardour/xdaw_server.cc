@@ -21,10 +21,19 @@
 #include <xdaw/server.h>
 #include <xdaw/types.h>
 
+#include <fstream>
+#include <unistd.h>
+
 #include <glibmm/miscutils.h>
 
 #include "ardour/audio_track.h"
 #include "ardour/audioregion.h"
+#include "ardour/export_channel_configuration.h"
+#include "ardour/export_filename.h"
+#include "ardour/export_format_specification.h"
+#include "ardour/export_handler.h"
+#include "ardour/export_status.h"
+#include "ardour/export_timespan.h"
 #include "ardour/gain_control.h"
 #include "ardour/midi_track.h"
 #include "ardour/panner_shell.h"
@@ -33,9 +42,11 @@
 #include "ardour/region_factory.h"
 #include "ardour/route.h"
 #include "ardour/session.h"
-#include "ardour/simple_export.h"
+#include "ardour/session_directory.h"
+#include "ardour/sndfilesource.h"
 #include "ardour/source_factory.h"
 #include "ardour/track.h"
+#include "ardour/types.h"
 
 #include "pbd/id.h"
 
@@ -431,10 +442,127 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         break;
       }
 
-      case xdaw::EditOperationType::CreateClip:
-        // TODO: Implement audio file import
-        response.error_message = "CreateClip not yet implemented";
-        return response;
+      case xdaw::EditOperationType::CreateClip: {
+        const auto& cmd = op.create_clip;
+
+        // Validate we have audio content
+        if (!cmd.content.is_audio_file()) {
+          response.error_message = "Only audio file clips are supported";
+          return response;
+        }
+
+        // Get the target track
+        auto route = _session->route_by_id(PBD::ID(cmd.track_id));
+        if (!route) {
+          response.error_message = "Track not found: " + cmd.track_id;
+          return response;
+        }
+
+        auto track = std::dynamic_pointer_cast<Track>(route);
+        if (!track) {
+          response.error_message = "Route is not a track";
+          return response;
+        }
+
+        auto playlist = track->playlist();
+        if (!playlist) {
+          response.error_message = "Track has no playlist";
+          return response;
+        }
+
+        // Create source(s) from the audio file
+        // Multi-channel files need one source per channel
+        SourceList sources;
+        try {
+          // Get channel count from file
+          SoundFileInfo sf_info;
+          std::string error_msg;
+          if (!SndFileSource::get_soundfile_info(
+                  cmd.content.audio_file_path, sf_info, error_msg)) {
+            response.error_message = "Cannot read audio file: " + error_msg;
+            return response;
+          }
+
+          for (uint32_t chn = 0; chn < sf_info.channels; ++chn) {
+            auto source = SourceFactory::createExternal(
+                DataType::AUDIO, *_session, cmd.content.audio_file_path,
+                static_cast<int>(chn), Source::Flag(0), true);
+            if (!source) {
+              response.error_message = "Failed to create source for channel " +
+                                       std::to_string(chn);
+              return response;
+            }
+            sources.push_back(source);
+          }
+        } catch (const std::exception& e) {
+          response.error_message =
+              std::string("Source creation failed: ") + e.what();
+          return response;
+        }
+
+        if (sources.empty()) {
+          response.error_message = "No sources created from file";
+          return response;
+        }
+
+        // Convert beat position to samples
+        auto tmap = Temporal::TempoMap::use();
+        if (!tmap) {
+          response.error_message = "No tempo map available";
+          return response;
+        }
+
+        auto start_beats = Temporal::Beats::from_double(cmd.start_beat);
+        auto start_samples = tmap->sample_at(start_beats);
+
+        // Create a "whole file" region from the sources
+        auto plist = PBD::PropertyList{};
+        plist.add(ARDOUR::Properties::whole_file, true);
+        plist.add(ARDOUR::Properties::name, cmd.name.empty() ? sources[0]->name() : cmd.name);
+
+        std::shared_ptr<Region> whole_region;
+        try {
+          whole_region = RegionFactory::create(sources, plist, true, nullptr);
+          if (!whole_region) {
+            response.error_message = "Failed to create region";
+            return response;
+          }
+        } catch (const std::exception& e) {
+          response.error_message =
+              std::string("Region creation failed: ") + e.what();
+          return response;
+        }
+
+        // Create a copy for placement (not whole_file)
+        auto copy_plist = PBD::PropertyList{};
+        copy_plist.add(ARDOUR::Properties::whole_file, false);
+
+        std::shared_ptr<Region> region;
+        try {
+          region = RegionFactory::create(whole_region, copy_plist, true, nullptr);
+          if (!region) {
+            response.error_message = "Failed to create region copy";
+            return response;
+          }
+        } catch (const std::exception& e) {
+          response.error_message =
+              std::string("Region copy creation failed: ") + e.what();
+          return response;
+        }
+
+        // Add region to playlist at the specified position
+        try {
+          auto position = Temporal::timepos_t(start_samples);
+          playlist->add_region(region, position, 1.0f, false);
+          response.created_ids.push_back(region->id().to_s());
+        } catch (const std::exception& e) {
+          response.error_message =
+              std::string("Failed to add region to playlist: ") + e.what();
+          return response;
+        }
+
+        break;
+      }
 
       case xdaw::EditOperationType::DeleteClip:
         // TODO: Implement region deletion
@@ -451,6 +579,55 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
   return response;
 }
 
+// Helper to get file extension for format type
+static auto get_file_extension(xdaw::FileType type) -> std::string {
+  switch (type) {
+    case xdaw::FileType::Wav:
+      return ".wav";
+    case xdaw::FileType::Aiff:
+      return ".aiff";
+    case xdaw::FileType::Flac:
+      return ".flac";
+    case xdaw::FileType::Ogg:
+      return ".ogg";
+    case xdaw::FileType::Mp3:
+      return ".mp3";
+    default:
+      return ".wav";
+  }
+}
+
+// Helper to get encoding format string for export XML
+static auto get_encoding_format(xdaw::FileType type)
+    -> std::pair<std::string, std::string> {
+  switch (type) {
+    case xdaw::FileType::Wav:
+      return {"F_WAV", "wav"};
+    case xdaw::FileType::Aiff:
+      return {"F_AIFF", "aiff"};
+    case xdaw::FileType::Flac:
+      return {"F_FLAC", "flac"};
+    case xdaw::FileType::Ogg:
+      return {"F_Ogg", "ogg"};
+    default:
+      return {"F_WAV", "wav"};
+  }
+}
+
+// Helper to get sample format string
+static auto get_sample_format_string(int bit_depth) -> std::string {
+  switch (bit_depth) {
+    case 16:
+      return "SF_16";
+    case 24:
+      return "SF_24";
+    case 32:
+      return "SF_32";
+    default:
+      return "SF_24";
+  }
+}
+
 auto XDAWServer::render_region(
     const xdaw::RenderRequest& req,
     std::function<void(const std::vector<float>&, bool, const std::string&)>
@@ -460,9 +637,6 @@ auto XDAWServer::render_region(
     return;
   }
 
-  auto simple_export = SimpleExport{};
-  simple_export.set_session(_session);
-
   // Convert beats to samples
   auto tmap = Temporal::TempoMap::use();
   if (!tmap) {
@@ -471,30 +645,191 @@ auto XDAWServer::render_region(
   }
 
   auto start_beats = Temporal::Beats::from_double(req.start_beat);
-  auto end_beats = Temporal::Beats::from_double(req.start_beat + req.length_beats);
+  auto end_beats =
+      Temporal::Beats::from_double(req.start_beat + req.length_beats);
   auto start_samples = tmap->sample_at(start_beats);
   auto end_samples = tmap->sample_at(end_beats);
 
-  simple_export.set_range(start_samples, end_samples);
-
-  if (!req.output_path.empty()) {
-    auto folder = Glib::path_get_dirname(req.output_path);
-    auto name = Glib::path_get_basename(req.output_path);
-    // Remove extension from name
-    auto dot_pos = name.rfind('.');
-    if (dot_pos != std::string::npos) {
-      name = name.substr(0, dot_pos);
-    }
-    simple_export.set_folder(folder);
-    simple_export.set_name(name);
+  // Add tail if requested
+  if (req.tail_length_seconds > 0) {
+    auto tail_samples = static_cast<samplepos_t>(req.tail_length_seconds *
+                                                  _session->sample_rate());
+    end_samples += tail_samples;
   }
 
-  auto success = simple_export.run_export();
-
-  if (success) {
-    writer({}, true, req.output_path);
-  } else {
+  if (start_samples >= end_samples) {
     writer({}, true, "");
+    return;
+  }
+
+  // Get export handler
+  auto handler = _session->get_export_handler();
+
+  // Create timespan
+  auto tsp = handler->add_timespan();
+  tsp->set_range(start_samples, end_samples);
+
+  // Create channel configuration from master outputs
+  auto ccp = handler->add_channel_config();
+  auto master_out = _session->master_out();
+  if (!master_out) {
+    writer({}, true, "");
+    return;
+  }
+
+  auto output = master_out->output().get();
+  if (!output) {
+    writer({}, true, "");
+    return;
+  }
+
+  for (uint32_t n = 0; n < output->n_ports().n_audio(); ++n) {
+    auto* channel = new PortExportChannel();
+    channel->add_port(output->audio(n));
+    ccp->register_channel(ExportChannelPtr(channel));
+  }
+
+  // Determine output path
+  auto ext = get_file_extension(req.format.type);
+  std::string output_folder;
+  std::string output_name;
+
+  if (!req.output_path.empty()) {
+    output_folder = Glib::path_get_dirname(req.output_path);
+    output_name = Glib::path_get_basename(req.output_path);
+    // Remove extension from name if present
+    auto dot_pos = output_name.rfind('.');
+    if (dot_pos != std::string::npos) {
+      output_name = output_name.substr(0, dot_pos);
+    }
+  } else {
+    output_folder = _session->session_directory().export_path();
+    output_name = "xdaw_render_" + std::to_string(start_samples);
+  }
+
+  // Create directory if needed
+  g_mkdir_with_parents(output_folder.c_str(), 0755);
+
+  // Create filename
+  auto fnp = handler->add_filename();
+  fnp->set_folder(output_folder);
+  tsp->set_name(output_name);
+  fnp->set_timespan(tsp);
+  fnp->include_label = false;
+
+  // Build format specification XML
+  auto [format_id, format_ext] = get_encoding_format(req.format.type);
+  auto sample_format = get_sample_format_string(
+      req.format.bit_depth > 0 ? req.format.bit_depth : 24);
+  auto sample_rate =
+      req.format.sample_rate > 0
+          ? std::to_string(req.format.sample_rate)
+          : std::to_string(static_cast<int>(_session->sample_rate()));
+  auto normalize = req.processing.peak.has_value() ? "true" : "false";
+
+  auto format_xml =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+      "<ExportFormatSpecification name=\"XDAW-EXPORT\" "
+      "id=\"xdaw-export-format\">"
+      "  <Encoding id=\"" +
+      format_id + "\" type=\"T_Sndfile\" extension=\"" + format_ext +
+      "\" name=\"XDAW\" has-sample-format=\"true\" channel-limit=\"256\"/>"
+      "  <SampleRate rate=\"" +
+      sample_rate +
+      "\"/>"
+      "  <SRCQuality quality=\"SRC_SincBest\"/>"
+      "  <EncodingOptions>"
+      "    <Option name=\"sample-format\" value=\"" +
+      sample_format +
+      "\"/>"
+      "    <Option name=\"dithering\" value=\"D_None\"/>"
+      "    <Option name=\"tag-metadata\" value=\"true\"/>"
+      "    <Option name=\"tag-support\" value=\"false\"/>"
+      "    <Option name=\"broadcast-info\" value=\"false\"/>"
+      "  </EncodingOptions>"
+      "  <Processing>"
+      "    <Normalize enabled=\"" +
+      normalize +
+      "\" target=\"0\"/>"
+      "    <Silence>"
+      "      <Start>"
+      "        <Trim enabled=\"false\"/>"
+      "        <Add enabled=\"false\">"
+      "          <Duration format=\"Timecode\" hours=\"0\" minutes=\"0\" "
+      "seconds=\"0\" frames=\"0\"/>"
+      "        </Add>"
+      "      </Start>"
+      "      <End>"
+      "        <Trim enabled=\"false\"/>"
+      "        <Add enabled=\"false\">"
+      "          <Duration format=\"Timecode\" hours=\"0\" minutes=\"0\" "
+      "seconds=\"0\" frames=\"0\"/>"
+      "        </Add>"
+      "      </End>"
+      "    </Silence>"
+      "  </Processing>"
+      "</ExportFormatSpecification>";
+
+  XMLTree tree;
+  if (!tree.read_buffer(format_xml.c_str())) {
+    writer({}, true, "");
+    return;
+  }
+
+  auto fmp = handler->add_format(*tree.root());
+  fmp->set_soundcloud_upload(false);
+
+  // Configure the export
+  handler->add_export_config(tsp, ccp, fmp, fnp, nullptr);
+
+  // Run export
+  if (0 != handler->do_export()) {
+    writer({}, true, "");
+    return;
+  }
+
+  // Wait for export to complete
+  auto status = _session->get_export_status();
+  while (status->running()) {
+    usleep(10000);
+  }
+  status->finish(TRS_UI);
+
+  if (status->aborted()) {
+    writer({}, true, "");
+    return;
+  }
+
+  // Get the output path
+  auto final_path = Glib::build_filename(output_folder, output_name + ext);
+
+  // Handle streaming if requested
+  if (req.stream_response) {
+    std::ifstream file(final_path, std::ios::binary);
+    if (!file) {
+      writer({}, true, "");
+      return;
+    }
+
+    std::vector<float> buffer(4096);
+    while (file) {
+      file.read(reinterpret_cast<char*>(buffer.data()),
+                static_cast<std::streamsize>(buffer.size() * sizeof(float)));
+      auto bytes_read = file.gcount();
+      if (bytes_read > 0) {
+        buffer.resize(static_cast<size_t>(bytes_read) / sizeof(float));
+        auto is_last = file.eof() || file.peek() == EOF;
+        writer(buffer, is_last, is_last ? final_path : "");
+        buffer.resize(4096);
+      }
+    }
+
+    // Delete temp file if no output path was specified
+    if (req.output_path.empty()) {
+      g_remove(final_path.c_str());
+    }
+  } else {
+    writer({}, true, final_path);
   }
 }
 

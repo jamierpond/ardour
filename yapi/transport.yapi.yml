@@ -1,5 +1,6 @@
 yapi: v1
-# Control Ardour transport
+url: grpc://localhost:50051
+service: xdaw.v1.DAWService
 rpc: ApplyEdits
 
 body:

@@ -1,5 +1,6 @@
 yapi: v1
-# Get the current session state from Ardour
+url: grpc://localhost:50051
+service: xdaw.v1.DAWService
 rpc: GetSessionState
 
 body:
