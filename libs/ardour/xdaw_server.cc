@@ -324,6 +324,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         // Create audio or MIDI track
         const auto& cmd = op.create_track;
         if (cmd.type == xdaw::TrackType::Audio) {
+          std::cerr << "[XDAW] Creating audio track: " << cmd.name << std::endl;
           auto tracks = _session->new_audio_track(
               1,       // input channels
               2,       // output channels
@@ -332,7 +333,9 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
               cmd.name.empty() ? "Audio" : cmd.name,
               PresentationInfo::max_order,
               Normal);
+          std::cerr << "[XDAW] new_audio_track returned " << tracks.size() << " tracks" << std::endl;
           for (const auto& t : tracks) {
+            std::cerr << "[XDAW] Created track ID: " << t->id().to_s() << std::endl;
             response.created_ids.push_back(t->id().to_s());
           }
         } else if (cmd.type == xdaw::TrackType::Midi) {
@@ -444,6 +447,8 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
 
       case xdaw::EditOperationType::CreateClip: {
         const auto& cmd = op.create_clip;
+        std::cerr << "[XDAW] CreateClip: track_id=" << cmd.track_id
+                  << " file=" << cmd.content.audio_file_path << std::endl;
 
         // Validate we have audio content
         if (!cmd.content.is_audio_file()) {
@@ -452,26 +457,33 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
 
         // Get the target track
+        std::cerr << "[XDAW] Looking up route by ID: " << cmd.track_id << std::endl;
         auto route = _session->route_by_id(PBD::ID(cmd.track_id));
         if (!route) {
+          std::cerr << "[XDAW] ERROR: Track not found!" << std::endl;
           response.error_message = "Track not found: " + cmd.track_id;
           return response;
         }
+        std::cerr << "[XDAW] Found route: " << route->name() << std::endl;
 
         auto track = std::dynamic_pointer_cast<Track>(route);
         if (!track) {
+          std::cerr << "[XDAW] ERROR: Route is not a track!" << std::endl;
           response.error_message = "Route is not a track";
           return response;
         }
 
         auto playlist = track->playlist();
         if (!playlist) {
+          std::cerr << "[XDAW] ERROR: Track has no playlist!" << std::endl;
           response.error_message = "Track has no playlist";
           return response;
         }
+        std::cerr << "[XDAW] Got playlist: " << playlist->name() << std::endl;
 
         // Create source(s) from the audio file
         // Multi-channel files need one source per channel
+        std::cerr << "[XDAW] Creating sources from: " << cmd.content.audio_file_path << std::endl;
         SourceList sources;
         try {
           // Get channel count from file
@@ -479,31 +491,40 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           std::string error_msg;
           if (!SndFileSource::get_soundfile_info(
                   cmd.content.audio_file_path, sf_info, error_msg)) {
+            std::cerr << "[XDAW] ERROR: Cannot read audio file: " << error_msg << std::endl;
             response.error_message = "Cannot read audio file: " + error_msg;
             return response;
           }
+          std::cerr << "[XDAW] File has " << sf_info.channels << " channels, "
+                    << sf_info.samplerate << " Hz" << std::endl;
 
           for (uint32_t chn = 0; chn < sf_info.channels; ++chn) {
+            std::cerr << "[XDAW] Creating source for channel " << chn << std::endl;
             auto source = SourceFactory::createExternal(
                 DataType::AUDIO, *_session, cmd.content.audio_file_path,
                 static_cast<int>(chn), Source::Flag(0), true);
             if (!source) {
+              std::cerr << "[XDAW] ERROR: Failed to create source for channel " << chn << std::endl;
               response.error_message = "Failed to create source for channel " +
                                        std::to_string(chn);
               return response;
             }
+            std::cerr << "[XDAW] Created source: " << source->name() << std::endl;
             sources.push_back(source);
           }
         } catch (const std::exception& e) {
+          std::cerr << "[XDAW] EXCEPTION in source creation: " << e.what() << std::endl;
           response.error_message =
               std::string("Source creation failed: ") + e.what();
           return response;
         }
 
         if (sources.empty()) {
+          std::cerr << "[XDAW] ERROR: No sources created" << std::endl;
           response.error_message = "No sources created from file";
           return response;
         }
+        std::cerr << "[XDAW] Created " << sources.size() << " sources" << std::endl;
 
         // Convert beat position to samples
         auto tmap = Temporal::TempoMap::use();
@@ -516,6 +537,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         auto start_samples = tmap->sample_at(start_beats);
 
         // Create a "whole file" region from the sources
+        std::cerr << "[XDAW] Creating whole_file region..." << std::endl;
         auto plist = PBD::PropertyList{};
         plist.add(ARDOUR::Properties::whole_file, true);
         plist.add(ARDOUR::Properties::name, cmd.name.empty() ? sources[0]->name() : cmd.name);
@@ -524,16 +546,20 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         try {
           whole_region = RegionFactory::create(sources, plist, true, nullptr);
           if (!whole_region) {
+            std::cerr << "[XDAW] ERROR: RegionFactory::create returned null" << std::endl;
             response.error_message = "Failed to create region";
             return response;
           }
+          std::cerr << "[XDAW] Created whole_region: " << whole_region->name() << std::endl;
         } catch (const std::exception& e) {
+          std::cerr << "[XDAW] EXCEPTION in region creation: " << e.what() << std::endl;
           response.error_message =
               std::string("Region creation failed: ") + e.what();
           return response;
         }
 
         // Create a copy for placement (not whole_file)
+        std::cerr << "[XDAW] Creating region copy for placement..." << std::endl;
         auto copy_plist = PBD::PropertyList{};
         copy_plist.add(ARDOUR::Properties::whole_file, false);
 
@@ -541,21 +567,27 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         try {
           region = RegionFactory::create(whole_region, copy_plist, true, nullptr);
           if (!region) {
+            std::cerr << "[XDAW] ERROR: Failed to create region copy" << std::endl;
             response.error_message = "Failed to create region copy";
             return response;
           }
+          std::cerr << "[XDAW] Created region copy: " << region->name() << std::endl;
         } catch (const std::exception& e) {
+          std::cerr << "[XDAW] EXCEPTION in region copy: " << e.what() << std::endl;
           response.error_message =
               std::string("Region copy creation failed: ") + e.what();
           return response;
         }
 
         // Add region to playlist at the specified position
+        std::cerr << "[XDAW] Adding region to playlist at sample " << start_samples << std::endl;
         try {
           auto position = Temporal::timepos_t(start_samples);
           playlist->add_region(region, position, 1.0f, false);
+          std::cerr << "[XDAW] SUCCESS! Region added, ID: " << region->id().to_s() << std::endl;
           response.created_ids.push_back(region->id().to_s());
         } catch (const std::exception& e) {
+          std::cerr << "[XDAW] EXCEPTION adding to playlist: " << e.what() << std::endl;
           response.error_message =
               std::string("Failed to add region to playlist: ") + e.what();
           return response;
@@ -727,8 +759,10 @@ auto XDAWServer::render_region(
           : std::to_string(static_cast<int>(_session->sample_rate()));
   auto normalize = req.processing.peak.has_value() ? "true" : "false";
 
-  // Use a fixed UUID for the export format specification
-  // (Ardour's export system requires valid UUID format)
+  // IMPORTANT: Ardour has two ID types:
+  //   - PBD::ID: numeric strings ("12345") for tracks, regions, routes
+  //   - PBD::UUID: hex format ("deadbeef-0000-4000-8000-...") for export presets
+  // Export XML must use valid UUID format or boost::uuid throws "Invalid UUID string"
   auto format_xml =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
       "<ExportFormatSpecification name=\"XDAW-EXPORT\" "

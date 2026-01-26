@@ -219,9 +219,10 @@ ARDOUR_UI::set_session (Session *s)
 			if (!_xdaw_server) {
 				_xdaw_server = std::make_unique<ARDOUR::XDAWServer>(50051);
 				_xdaw_server->start();
-				_xdaw_idle_connection = Glib::signal_idle().connect(
+				// Use a 50ms timeout instead of idle to avoid starving GUI updates
+				_xdaw_idle_connection = Glib::signal_timeout().connect(
 					sigc::mem_fun(*this, &ARDOUR_UI::xdaw_idle_handler),
-					Glib::PRIORITY_HIGH_IDLE
+					50  // Check every 50ms
 				);
 			}
 			if (_session) {
