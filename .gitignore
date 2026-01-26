@@ -13,7 +13,7 @@ config.log
 config.status
 config.guess
 config.sub
-Makefile
+# Makefile
 Makefile.in
 autom4te.cache
 stamp-h1
