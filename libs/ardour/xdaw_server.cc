@@ -537,45 +537,33 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         auto start_samples = tmap->sample_at(start_beats);
 
         // Create a "whole file" region from the sources
+        // Must set start, length, and other properties for the region to have audio
         std::cerr << "[XDAW] Creating whole_file region..." << std::endl;
-        auto plist = PBD::PropertyList{};
-        plist.add(ARDOUR::Properties::whole_file, true);
-        plist.add(ARDOUR::Properties::name, cmd.name.empty() ? sources[0]->name() : cmd.name);
+        std::cerr << "[XDAW] Source length: " << sources[0]->length().samples() << " samples" << std::endl;
 
-        std::shared_ptr<Region> whole_region;
+        auto plist = PBD::PropertyList{};
+        plist.add(ARDOUR::Properties::start, Temporal::timecnt_t(Temporal::AudioTime));
+        plist.add(ARDOUR::Properties::length, sources[0]->length());
+        plist.add(ARDOUR::Properties::name, cmd.name.empty() ? sources[0]->name() : cmd.name);
+        plist.add(ARDOUR::Properties::layer, 0);
+        plist.add(ARDOUR::Properties::whole_file, true);
+        plist.add(ARDOUR::Properties::external, true);
+        plist.add(ARDOUR::Properties::opaque, true);
+
+        std::shared_ptr<Region> region;
         try {
-          whole_region = RegionFactory::create(sources, plist, true, nullptr);
-          if (!whole_region) {
+          region = RegionFactory::create(sources, plist, true, nullptr);
+          if (!region) {
             std::cerr << "[XDAW] ERROR: RegionFactory::create returned null" << std::endl;
             response.error_message = "Failed to create region";
             return response;
           }
-          std::cerr << "[XDAW] Created whole_region: " << whole_region->name() << std::endl;
+          std::cerr << "[XDAW] Created region: " << region->name()
+                    << " length=" << region->length().samples() << " samples" << std::endl;
         } catch (const std::exception& e) {
           std::cerr << "[XDAW] EXCEPTION in region creation: " << e.what() << std::endl;
           response.error_message =
               std::string("Region creation failed: ") + e.what();
-          return response;
-        }
-
-        // Create a copy for placement (not whole_file)
-        std::cerr << "[XDAW] Creating region copy for placement..." << std::endl;
-        auto copy_plist = PBD::PropertyList{};
-        copy_plist.add(ARDOUR::Properties::whole_file, false);
-
-        std::shared_ptr<Region> region;
-        try {
-          region = RegionFactory::create(whole_region, copy_plist, true, nullptr);
-          if (!region) {
-            std::cerr << "[XDAW] ERROR: Failed to create region copy" << std::endl;
-            response.error_message = "Failed to create region copy";
-            return response;
-          }
-          std::cerr << "[XDAW] Created region copy: " << region->name() << std::endl;
-        } catch (const std::exception& e) {
-          std::cerr << "[XDAW] EXCEPTION in region copy: " << e.what() << std::endl;
-          response.error_message =
-              std::string("Region copy creation failed: ") + e.what();
           return response;
         }
 
@@ -664,14 +652,39 @@ auto XDAWServer::render_region(
     const xdaw::RenderRequest& req,
     std::function<void(const std::vector<float>&, bool, const std::string&)>
         writer) -> void {
+  std::cerr << "[XDAW] render_region called: start_beat=" << req.start_beat
+            << " length_beats=" << req.length_beats << std::endl;
+
   if (!_session) {
+    std::cerr << "[XDAW] ERROR: No session!" << std::endl;
     writer({}, true, "");
     return;
+  }
+
+  // Debug: List all tracks and their regions
+  auto routes = _session->get_routes();
+  std::cerr << "[XDAW] Session has " << routes->size() << " routes" << std::endl;
+  for (const auto& route : *routes) {
+    std::cerr << "[XDAW]   Route: " << route->name() << " (muted=" << route->muted()
+              << ", soloed=" << route->soloed() << ")" << std::endl;
+    if (auto track = std::dynamic_pointer_cast<Track>(route)) {
+      if (auto playlist = track->playlist()) {
+        auto region_list = playlist->region_list();
+        std::cerr << "[XDAW]     Playlist: " << playlist->name()
+                  << " with " << region_list->size() << " regions" << std::endl;
+        for (const auto& region : *region_list) {
+          std::cerr << "[XDAW]       Region: " << region->name()
+                    << " pos=" << region->position().samples()
+                    << " len=" << region->length().samples() << std::endl;
+        }
+      }
+    }
   }
 
   // Convert beats to samples
   auto tmap = Temporal::TempoMap::use();
   if (!tmap) {
+    std::cerr << "[XDAW] ERROR: No tempo map!" << std::endl;
     writer({}, true, "");
     return;
   }
@@ -682,14 +695,19 @@ auto XDAWServer::render_region(
   auto start_samples = tmap->sample_at(start_beats);
   auto end_samples = tmap->sample_at(end_beats);
 
+  std::cerr << "[XDAW] Render range: " << start_samples << " to " << end_samples
+            << " samples (sr=" << _session->sample_rate() << ")" << std::endl;
+
   // Add tail if requested
   if (req.tail_length_seconds > 0) {
     auto tail_samples = static_cast<samplepos_t>(req.tail_length_seconds *
                                                   _session->sample_rate());
     end_samples += tail_samples;
+    std::cerr << "[XDAW] Added tail: " << tail_samples << " samples" << std::endl;
   }
 
   if (start_samples >= end_samples) {
+    std::cerr << "[XDAW] ERROR: Invalid range!" << std::endl;
     writer({}, true, "");
     return;
   }
@@ -818,26 +836,39 @@ auto XDAWServer::render_region(
   // Configure the export
   handler->add_export_config(tsp, ccp, fmp, fnp, nullptr);
 
+  std::cerr << "[XDAW] Starting export to: " << output_folder << "/" << output_name << ext << std::endl;
+
   // Run export
   if (0 != handler->do_export()) {
+    std::cerr << "[XDAW] ERROR: do_export() failed!" << std::endl;
     writer({}, true, "");
     return;
   }
 
   // Wait for export to complete
   auto status = _session->get_export_status();
+  std::cerr << "[XDAW] Waiting for export..." << std::endl;
   while (status->running()) {
     usleep(10000);
   }
   status->finish(TRS_UI);
 
   if (status->aborted()) {
+    std::cerr << "[XDAW] ERROR: Export aborted!" << std::endl;
     writer({}, true, "");
     return;
   }
 
   // Get the output path
   auto final_path = Glib::build_filename(output_folder, output_name + ext);
+  std::cerr << "[XDAW] Export complete! File: " << final_path << std::endl;
+
+  // Check file size
+  std::ifstream check_file(final_path, std::ios::binary | std::ios::ate);
+  if (check_file) {
+    auto file_size = check_file.tellg();
+    std::cerr << "[XDAW] Output file size: " << file_size << " bytes" << std::endl;
+  }
 
   // Handle streaming if requested
   if (req.stream_response) {
