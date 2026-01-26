@@ -108,7 +108,9 @@ auto XDAWServer::process_pending_tasks() -> void {
 }
 
 auto XDAWServer::has_pending_tasks() -> bool {
-  return tasks_pending_.exchange(false, std::memory_order_acq_rel);
+  // Return true if gRPC tasks are pending OR if we have renders to poll
+  return tasks_pending_.exchange(false, std::memory_order_acq_rel) ||
+         !pending_renders_.empty();
 }
 
 // Helper to convert Ardour track type to XDAW
