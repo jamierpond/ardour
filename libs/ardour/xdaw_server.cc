@@ -21,6 +21,8 @@
 #include <xdaw/server.h>
 #include <xdaw/types.h>
 
+#include <glibmm/miscutils.h>
+
 #include "ardour/audio_track.h"
 #include "ardour/audioregion.h"
 #include "ardour/gain_control.h"
@@ -35,6 +37,7 @@
 
 #include "pbd/id.h"
 
+#include "temporal/beats.h"
 #include "temporal/tempo.h"
 
 namespace ARDOUR {
@@ -170,8 +173,8 @@ auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
           if (tmap) {
             auto pos_beats = tmap->quarters_at(region->position());
             auto end_beats = tmap->quarters_at(region->end());
-            clip.start_beat = pos_beats.to_double();
-            clip.length_beats = (end_beats - pos_beats).to_double();
+            clip.start_beat = Temporal::DoubleableBeats(pos_beats).to_double();
+            clip.length_beats = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
           }
 
           track.clips.push_back(clip);
@@ -219,7 +222,7 @@ auto XDAWServer::build_transport_state() -> xdaw::TransportState {
   if (tmap) {
     auto pos = _session->transport_sample();
     auto beats = tmap->quarters_at(Temporal::timepos_t(pos));
-    state.position_beats = beats.to_double();
+    state.position_beats = Temporal::DoubleableBeats(beats).to_double();
 
     auto tempo = tmap->tempo_at(Temporal::timepos_t());
     state.tempo = tempo.note_types_per_minute();
@@ -232,8 +235,8 @@ auto XDAWServer::build_transport_state() -> xdaw::TransportState {
       auto loop_region = xdaw::LoopRegion{};
       auto start_beats = tmap->quarters_at(loop_loc->start());
       auto end_beats = tmap->quarters_at(loop_loc->end());
-      loop_region.start_beat = start_beats.to_double();
-      loop_region.length_beats = (end_beats - start_beats).to_double();
+      loop_region.start_beat = Temporal::DoubleableBeats(start_beats).to_double();
+      loop_region.length_beats = Temporal::DoubleableBeats(end_beats - start_beats).to_double();
       state.loop_region = loop_region;
     }
   }
@@ -279,8 +282,8 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
         if (tmap) {
           auto pos_beats = tmap->quarters_at(region->position());
           auto end_beats = tmap->quarters_at(region->end());
-          clip.start_beat = pos_beats.to_double();
-          clip.length_beats = (end_beats - pos_beats).to_double();
+          clip.start_beat = Temporal::DoubleableBeats(pos_beats).to_double();
+          clip.length_beats = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
         }
 
         track.clips.push_back(clip);
@@ -362,20 +365,26 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
 
       case xdaw::EditOperationType::SetMixerState: {
         const auto& cmd = op.set_mixer_state;
-        auto route = _session->route_by_id(PBD::ID(cmd.track_id));
-        if (route) {
-          if (cmd.muted.has_value()) {
-            route->set_mute(*cmd.muted, PBD::Controllable::NoGroup);
-          }
-          if (cmd.soloed.has_value()) {
-            route->set_solo(*cmd.soloed, PBD::Controllable::NoGroup);
-          }
-          if (cmd.volume.has_value()) {
-            if (auto gain_ctrl = route->gain_control()) {
-              // Convert dB to coefficient
-              auto db = static_cast<float>(*cmd.volume);
-              auto coef = std::pow(10.0f, db / 20.0f);
-              gain_ctrl->set_value(coef, PBD::Controllable::NoGroup);
+        for (const auto& track_id : cmd.track_ids) {
+          auto route = _session->route_by_id(PBD::ID(track_id));
+          if (route) {
+            if (cmd.muted.has_value()) {
+              if (auto ctrl = route->mute_control()) {
+                ctrl->set_value(*cmd.muted ? 1.0 : 0.0, PBD::Controllable::NoGroup);
+              }
+            }
+            if (cmd.soloed.has_value()) {
+              if (auto ctrl = route->solo_control()) {
+                ctrl->set_value(*cmd.soloed ? 1.0 : 0.0, PBD::Controllable::NoGroup);
+              }
+            }
+            if (cmd.volume.has_value()) {
+              if (auto gain_ctrl = route->gain_control()) {
+                // Convert dB to coefficient
+                auto db = static_cast<float>(*cmd.volume);
+                auto coef = std::pow(10.0f, db / 20.0f);
+                gain_ctrl->set_value(coef, PBD::Controllable::NoGroup);
+              }
             }
           }
         }
