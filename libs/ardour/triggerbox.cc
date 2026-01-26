@@ -895,7 +895,6 @@ Trigger::shutdown_from_fwd ()
 	_cue_launched = false;
 	_pending_velocity_gain = _velocity_gain = 1.0;
 	_scene_switch = false;
-	_explicitly_stopped = false;
 	DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1/%2 [%3] shuts down\n", _box.order(), index(), name()));
 	send_property_change (ARDOUR::Properties::running);
 }
@@ -941,7 +940,7 @@ Trigger::begin_stop (bool explicit_stop)
 	*/
 	_state = WaitingToStop;
 	_explicitly_stopped = explicit_stop;
-	DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 begin_stop() requested state %2\n", index(), enum_2_string (_state)));
+	DEBUG_TRACE (DEBUG::Triggers, string_compose ("%1 begin_stop() explicit %2 requested state %3\n", index(), _explicitly_stopped, enum_2_string (_state)));
 	send_property_change (ARDOUR::Properties::running);
 }
 
