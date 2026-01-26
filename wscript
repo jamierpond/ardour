@@ -1179,7 +1179,7 @@ def configure(conf):
     autowaf.check_pkg(conf, 'rubberband', uselib_store='RUBBERBAND', mandatory=True)
 
     # XDAW SDK configuration
-    # Uses fat static library that bundles all dependencies (gRPC, protobuf, etc.)
+    # Uses fat shared library that bundles all dependencies (gRPC, protobuf, etc.)
     # Can be specified via --xdaw-sdk=/path/to/sdk or defaults to ../../sdk
     if Options.options.xdaw_sdk:
         xdaw_sdk_root = os.path.abspath(Options.options.xdaw_sdk)
@@ -1187,8 +1187,8 @@ def configure(conf):
         xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
     xdaw_lib_path = os.path.join(xdaw_sdk_root, '..', 'bazel-bin', 'sdk')
     conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
-    conf.env.STLIB_XDAW = ['xdaw_fat']
-    conf.env.STLIBPATH_XDAW = [xdaw_lib_path]
+    conf.env.LIB_XDAW = ['xdaw_shared']
+    conf.env.LIBPATH_XDAW = [xdaw_lib_path]
     conf.msg('Checking for XDAW SDK', xdaw_sdk_root)
 
     autowaf.check_pkg(conf, 'libusb-1.0', uselib_store='USB', atleast_version='1.0.16', mandatory=False)
