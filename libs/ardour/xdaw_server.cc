@@ -30,9 +30,11 @@
 #include "ardour/panner_shell.h"
 #include "ardour/playlist.h"
 #include "ardour/region.h"
+#include "ardour/region_factory.h"
 #include "ardour/route.h"
 #include "ardour/session.h"
 #include "ardour/simple_export.h"
+#include "ardour/source_factory.h"
 #include "ardour/track.h"
 
 #include "pbd/id.h"

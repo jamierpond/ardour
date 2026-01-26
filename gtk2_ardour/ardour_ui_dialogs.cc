@@ -251,10 +251,7 @@ ARDOUR_UI::unload_session (bool hide_stuff, bool force_unload)
 	if (_session) {
 		ARDOUR_UI::instance()->video_timeline->sync_session_state();
 
-		/* Clear session from XDAW server */
-		if (_xdaw_server) {
-			_xdaw_server->set_session(nullptr);
-		}
+		/* XDAW server session cleanup happens automatically via DropReferences signal */
 
 		/* Unconditionally save session-specific GUI settings:
 		 * Playhead position, zoom/scroll with stationary PH,

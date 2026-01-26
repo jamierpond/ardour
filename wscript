@@ -1177,11 +1177,14 @@ def configure(conf):
     autowaf.check_pkg(conf, 'rubberband', uselib_store='RUBBERBAND', mandatory=True)
 
     # XDAW SDK (local, relative to examples/ardour/)
+    # Uses shared library that bundles all dependencies (gRPC, protobuf, etc.)
     xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
+    xdaw_lib_path = os.path.join(xdaw_sdk_root, '..', 'bazel-bin', 'sdk')
     conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
     conf.env.LIB_XDAW = ['xdaw_shared']
-    # XDAW SDK shared lib built by bazel (bundles gRPC)
-    conf.env.LIBPATH_XDAW = [os.path.join(xdaw_sdk_root, '..', 'bazel-bin', 'sdk')]
+    conf.env.LIBPATH_XDAW = [xdaw_lib_path]
+    # Add rpath so the shared library can be found at runtime
+    conf.env.RPATH_XDAW = [xdaw_lib_path]
     conf.msg('Checking for XDAW SDK', xdaw_sdk_root)
 
     autowaf.check_pkg(conf, 'libusb-1.0', uselib_store='USB', atleast_version='1.0.16', mandatory=False)
