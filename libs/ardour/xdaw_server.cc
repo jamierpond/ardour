@@ -799,9 +799,28 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         std::cerr << "[XDAW] Adding region to playlist at sample " << start_samples << std::endl;
         try {
           auto position = Temporal::timepos_t(start_samples);
+
+          // Get region count before adding
+          auto regions_before = playlist->region_list()->size();
+
           playlist->add_region(region, position, 1.0f, false);
-          std::cerr << "[XDAW] SUCCESS! Region added, ID: " << region->id().to_s() << std::endl;
-          response.created_ids.push_back(region->id().to_s());
+
+          // Find the newly added region by checking what's new in the playlist
+          auto region_list = playlist->region_list();
+          if (region_list->size() > regions_before) {
+            // Find the region at our position (the one we just added)
+            for (const auto& r : *region_list) {
+              if (r->position().samples() == start_samples) {
+                std::cerr << "[XDAW] SUCCESS! Region in playlist, ID: " << r->id().to_s() << std::endl;
+                response.created_ids.push_back(r->id().to_s());
+                break;
+              }
+            }
+          } else {
+            // Fallback to original region ID
+            std::cerr << "[XDAW] WARNING: Could not find added region, using original ID: " << region->id().to_s() << std::endl;
+            response.created_ids.push_back(region->id().to_s());
+          }
         } catch (const std::exception& e) {
           std::cerr << "[XDAW] EXCEPTION adding to playlist: " << e.what() << std::endl;
           response.error_message =
