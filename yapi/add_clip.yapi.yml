@@ -1,0 +1,32 @@
+yapi: v1
+# Add a clip to the first audio track at beat 0
+# Requires: AUDIO_FILE environment variable or edit audio_file_path below
+
+chain:
+  - name: get_session
+    url: grpc://localhost:50051
+    service: xdaw.v1.DAWService
+    rpc: GetSessionState
+    body:
+      include_clips: true
+    expect:
+      assert:
+        - (.tracks | length) >= 1
+
+  - name: add_clip
+    url: grpc://localhost:50051
+    service: xdaw.v1.DAWService
+    rpc: ApplyEdits
+    body:
+      undo_step_name: "Add clip via yapi"
+      operations:
+        - create_clip:
+            track_id: ${get_session.tracks[0].id}
+            start_beat: 0.0
+            length_beats: 8.0
+            name: "Rick Clip"
+            audio_file_path: /Users/jamiepond/rick-verse.mp3
+    expect:
+      assert:
+        - .success == true
+        - (.created_ids | length) >= 1
