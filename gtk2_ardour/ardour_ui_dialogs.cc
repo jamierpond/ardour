@@ -215,7 +215,7 @@ ARDOUR_UI::set_session (Session *s)
 
 	/* Initialize XDAW server for remote control - delayed to avoid audio init conflicts */
 	Glib::signal_timeout().connect_once(
-		[this, s]() {
+		[this]() {
 			if (!_xdaw_server) {
 				_xdaw_server = std::make_unique<ARDOUR::XDAWServer>(50051);
 				_xdaw_server->start();
@@ -224,7 +224,9 @@ ARDOUR_UI::set_session (Session *s)
 					Glib::PRIORITY_HIGH_IDLE
 				);
 			}
-			_xdaw_server->set_session(s);
+			if (_session) {
+				_xdaw_server->set_session(_session);
+			}
 		},
 		500  // 500ms delay to let audio engine fully initialize
 	);

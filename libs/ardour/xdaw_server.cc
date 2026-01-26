@@ -727,10 +727,12 @@ auto XDAWServer::render_region(
           : std::to_string(static_cast<int>(_session->sample_rate()));
   auto normalize = req.processing.peak.has_value() ? "true" : "false";
 
+  // Use a fixed UUID for the export format specification
+  // (Ardour's export system requires valid UUID format)
   auto format_xml =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
       "<ExportFormatSpecification name=\"XDAW-EXPORT\" "
-      "id=\"xdaw-export-format\">"
+      "id=\"deadbeef-0000-4000-8000-000000000001\">"
       "  <Encoding id=\"" +
       format_id + "\" type=\"T_Sndfile\" extension=\"" + format_ext +
       "\" name=\"XDAW\" has-sample-format=\"true\" channel-limit=\"256\"/>"
