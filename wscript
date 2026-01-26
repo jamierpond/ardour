@@ -1176,6 +1176,15 @@ def configure(conf):
     autowaf.check_pkg(conf, 'vamp-hostsdk', uselib_store='VAMPHOSTSDK', atleast_version='2.1', mandatory=True)
     autowaf.check_pkg(conf, 'rubberband', uselib_store='RUBBERBAND', mandatory=True)
 
+    # XDAW SDK (local, relative to examples/ardour/)
+    xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
+    conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
+    conf.env.LIB_XDAW = ['xdaw']
+    # XDAW SDK lib is built in the xdaw project's build directory
+    # Adjust this path based on your build configuration
+    conf.env.LIBPATH_XDAW = [os.path.join(xdaw_sdk_root, '..', 'build-release', 'sdk')]
+    conf.msg('Checking for XDAW SDK', xdaw_sdk_root)
+
     autowaf.check_pkg(conf, 'libusb-1.0', uselib_store='USB', atleast_version='1.0.16', mandatory=False)
 
     # we cannot rely on pkg-config - https://lists.linuxaudio.org/archives/linux-audio-dev/2022-July/038395.html

@@ -77,6 +77,7 @@
 #include "ardour/plugin.h"
 #include "ardour/session_handle.h"
 #include "ardour/system_exec.h"
+#include "ardour/xdaw_server.h"
 
 #include "video_timeline.h"
 
@@ -469,6 +470,12 @@ private:
 	Gtk::Menu*    _shared_popup_menu;
 
 	BasicUI*      _basic_ui;
+
+	/* XDAW server for remote control */
+	std::unique_ptr<ARDOUR::XDAWServer> _xdaw_server;
+	sigc::connection _xdaw_idle_connection;
+	bool xdaw_idle_handler();
+
 	void hide_tabbable (ArdourWidgets::Tabbable*);
 	void detach_tabbable (ArdourWidgets::Tabbable*);
 	void attach_tabbable (ArdourWidgets::Tabbable*);

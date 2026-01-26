@@ -213,6 +213,17 @@ ARDOUR_UI::set_session (Session *s)
 
 	connect_dependents_to_session (s);
 
+	/* Initialize XDAW server for remote control */
+	if (!_xdaw_server) {
+		_xdaw_server = std::make_unique<ARDOUR::XDAWServer>(50051);
+		_xdaw_server->start();
+		_xdaw_idle_connection = Glib::signal_idle().connect(
+			sigc::mem_fun(*this, &ARDOUR_UI::xdaw_idle_handler),
+			Glib::PRIORITY_HIGH_IDLE
+		);
+	}
+	_xdaw_server->set_session(s);
+
 	/* listen to clock mode changes. don't do this earlier because otherwise as the clocks
 	   restore their modes or are explicitly set, we will cause the "new" mode to be saved
 	   back to the session XML ("Extra") state.
@@ -239,6 +250,11 @@ ARDOUR_UI::unload_session (bool hide_stuff, bool force_unload)
 {
 	if (_session) {
 		ARDOUR_UI::instance()->video_timeline->sync_session_state();
+
+		/* Clear session from XDAW server */
+		if (_xdaw_server) {
+			_xdaw_server->set_session(nullptr);
+		}
 
 		/* Unconditionally save session-specific GUI settings:
 		 * Playhead position, zoom/scroll with stationary PH,
@@ -1122,4 +1138,13 @@ ARDOUR_UI::format_button_press (GdkEventButton* ev)
 		session_option_editor->set_current_page (_("Media"));
 	}
 	return true;
+}
+
+bool
+ARDOUR_UI::xdaw_idle_handler ()
+{
+	if (_xdaw_server && _xdaw_server->has_pending_tasks()) {
+		_xdaw_server->process_pending_tasks();
+	}
+	return true; /* keep calling */
 }

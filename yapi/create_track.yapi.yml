@@ -1,0 +1,16 @@
+yapi: v1
+# Create a new audio track in Ardour
+# Tests: Edit operations - track creation
+rpc: ApplyEdits
+
+body:
+  undo_step_name: "Create audio track via yapi"
+  operations:
+    - create_track:
+        name: "YAPI Audio Track"
+        type: TRACK_TYPE_AUDIO
+
+expect:
+  assert:
+    - .success == true
+    - (.created_ids | length) >= 1

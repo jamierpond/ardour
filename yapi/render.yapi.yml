@@ -1,0 +1,32 @@
+yapi: v1
+# Render audio from Ardour session to a file
+rpc: RenderAudio
+
+body:
+  start_beat: 0.0
+  length_beats: 16.0
+  tail_length_seconds: 1.0
+
+  source:
+    track_ids: []
+    separate_tracks: false
+
+  format:
+    type: FILE_TYPE_WAV
+    sample_rate: 44100
+    bit_depth: 24
+    channels: 2
+
+  processing:
+    realtime: false
+    include_track_effects: true
+    include_master_effects: true
+    dither: false
+    remove_silence: false
+
+  output_path: "/tmp/ardour_xdaw_render_test.wav"
+
+expect:
+  assert:
+    - .is_last == true
+    - .output_path == "/tmp/ardour_xdaw_render_test.wav"

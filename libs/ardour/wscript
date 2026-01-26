@@ -276,6 +276,7 @@ libardour_sources = [
         'video_tools_paths.cc',
         'vumeterdsp.cc',
         'worker.cc',
+        'xdaw_server.cc',
         'zeroconf.cc'
 ]
 
@@ -397,7 +398,7 @@ def build(bld):
     obj.target       = 'ardour'
     obj.uselib       = ['GLIBMM','GTHREAD','AUBIO','SIGCPP','XML','UUID', 'LO', 'USB',
                         'SNDFILE','SAMPLERATE','LRDF','AUDIOUNITS', 'GIOMM', 'FFTW3F',
-                        'OSX','BOOST','CURL','TAGLIB','VAMPSDK','VAMPHOSTSDK','RUBBERBAND']
+                        'OSX','BOOST','CURL','TAGLIB','VAMPSDK','VAMPHOSTSDK','RUBBERBAND','XDAW']
     obj.use          = ['libpbd','libmidipp','libevoral',
                         'libaudiographer',
                         'libtemporal',

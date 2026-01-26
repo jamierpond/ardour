@@ -1,0 +1,14 @@
+yapi: v1
+# Get the current session state from Ardour
+rpc: GetSessionState
+
+body:
+  include_clips: true
+  include_devices: false
+  include_automation: false
+
+expect:
+  assert:
+    - .tempo > 0
+    - .time_signature.numerator > 0
+    - .time_signature.denominator > 0
