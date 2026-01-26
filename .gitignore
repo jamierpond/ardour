@@ -151,3 +151,4 @@ tags
 
 # misc custom files git should ignore
 /local
+tools/osx_packaging/Ardour9.app/Contents
