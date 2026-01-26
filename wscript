@@ -1179,8 +1179,8 @@ def configure(conf):
     # XDAW SDK (local, relative to examples/ardour/)
     xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
     conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
-    conf.env.LIB_XDAW = ['xdaw']
-    # XDAW SDK lib built by bazel
+    conf.env.LIB_XDAW = ['xdaw_shared']
+    # XDAW SDK shared lib built by bazel (bundles gRPC)
     conf.env.LIBPATH_XDAW = [os.path.join(xdaw_sdk_root, '..', 'bazel-bin', 'sdk')]
     conf.msg('Checking for XDAW SDK', xdaw_sdk_root)
 
