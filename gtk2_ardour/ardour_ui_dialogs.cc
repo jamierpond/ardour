@@ -213,16 +213,21 @@ ARDOUR_UI::set_session (Session *s)
 
 	connect_dependents_to_session (s);
 
-	/* Initialize XDAW server for remote control */
-	if (!_xdaw_server) {
-		_xdaw_server = std::make_unique<ARDOUR::XDAWServer>(50051);
-		_xdaw_server->start();
-		_xdaw_idle_connection = Glib::signal_idle().connect(
-			sigc::mem_fun(*this, &ARDOUR_UI::xdaw_idle_handler),
-			Glib::PRIORITY_HIGH_IDLE
-		);
-	}
-	_xdaw_server->set_session(s);
+	/* Initialize XDAW server for remote control - delayed to avoid audio init conflicts */
+	Glib::signal_timeout().connect_once(
+		[this, s]() {
+			if (!_xdaw_server) {
+				_xdaw_server = std::make_unique<ARDOUR::XDAWServer>(50051);
+				_xdaw_server->start();
+				_xdaw_idle_connection = Glib::signal_idle().connect(
+					sigc::mem_fun(*this, &ARDOUR_UI::xdaw_idle_handler),
+					Glib::PRIORITY_HIGH_IDLE
+				);
+			}
+			_xdaw_server->set_session(s);
+		},
+		500  // 500ms delay to let audio engine fully initialize
+	);
 
 	/* listen to clock mode changes. don't do this earlier because otherwise as the clocks
 	   restore their modes or are explicitly set, we will cause the "new" mode to be saved
