@@ -35,6 +35,8 @@ struct EditBatch;
 struct EditResponse;
 struct RenderRequest;
 struct RenderOperation;
+struct PluginsRequest;
+struct PluginsResponse;
 }  // namespace xdaw
 
 namespace ARDOUR {
@@ -80,6 +82,7 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
       -> xdaw::SessionState;
   auto build_transport_state() -> xdaw::TransportState;
   auto get_track_detail(const std::string& track_id) -> xdaw::Track;
+  auto get_plugins(const xdaw::PluginsRequest& req) -> xdaw::PluginsResponse;
   auto apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse;
 
   // Async render: starts export and returns operation ID immediately.
@@ -91,7 +94,6 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
 
   std::unique_ptr<xdaw::Server> server_;
   std::atomic<bool> tasks_pending_{false};
-  std::int32_t port_;
 
   // Track pending render operations
   struct PendingRender {

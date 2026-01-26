@@ -38,6 +38,8 @@
 #include "ardour/midi_track.h"
 #include "ardour/panner_shell.h"
 #include "ardour/playlist.h"
+#include "ardour/plugin_insert.h"
+#include "ardour/plugin_manager.h"
 #include "ardour/region.h"
 #include "ardour/region_factory.h"
 #include "ardour/route.h"
@@ -56,8 +58,7 @@
 namespace ARDOUR {
 
 XDAWServer::XDAWServer(std::int32_t port)
-    : port_(port),
-      server_(std::make_unique<xdaw::Server>(xdaw::Server::Config{
+    : server_(std::make_unique<xdaw::Server>(xdaw::Server::Config{
           .port = port,
           .daw_name = "Ardour",
           .daw_version = "8.0",  // TODO: Use actual version
@@ -84,6 +85,9 @@ auto XDAWServer::setup_handlers() -> void {
 
   server_->set_track_detail_provider(
       [this](const std::string& track_id) { return get_track_detail(track_id); });
+
+  server_->set_plugins_handler(
+      [this](const xdaw::PluginsRequest& req) { return get_plugins(req); });
 
   server_->set_edit_handler(
       [this](const xdaw::EditBatch& batch) { return apply_edits(batch); });
@@ -320,7 +324,153 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
     }
   }
 
+  // Get devices (plugins)
+  route->foreach_processor([&track](std::weak_ptr<Processor> wp) {
+    if (auto proc = wp.lock()) {
+      if (auto pi = std::dynamic_pointer_cast<PluginInsert>(proc)) {
+        auto device = xdaw::Device{};
+        device.id = pi->id().to_s();
+        device.name = pi->name();
+        device.is_enabled = pi->enabled();
+
+        if (auto plugin = pi->plugin()) {
+          auto info = plugin->get_info();
+          device.plugin_id = info->unique_id;
+          device.format = ardour_to_xdaw_plugin_format(info->type);
+        }
+
+        track.devices.push_back(device);
+      }
+    }
+  });
+
   return track;
+}
+
+namespace {
+
+auto ardour_to_xdaw_plugin_format(PluginType type) -> xdaw::PluginFormat {
+  switch (type) {
+    case AudioUnit:
+      return xdaw::PluginFormat::AU;
+    case Windows_VST:
+    case LXVST:
+    case MacVST:
+      return xdaw::PluginFormat::VST2;
+    case VST3:
+      return xdaw::PluginFormat::VST3;
+    case LV2:
+      return xdaw::PluginFormat::LV2;
+    case LADSPA:
+      return xdaw::PluginFormat::LADSPA;
+    case Lua:
+      return xdaw::PluginFormat::Internal;
+    default:
+      return xdaw::PluginFormat::Unspecified;
+  }
+}
+
+auto xdaw_to_ardour_plugin_type(xdaw::PluginFormat format) -> PluginType {
+  switch (format) {
+    case xdaw::PluginFormat::AU:
+      return AudioUnit;
+    case xdaw::PluginFormat::VST2:
+      return LXVST;  // Generic VST2
+    case xdaw::PluginFormat::VST3:
+      return VST3;
+    case xdaw::PluginFormat::LV2:
+      return LV2;
+    case xdaw::PluginFormat::LADSPA:
+      return LADSPA;
+    case xdaw::PluginFormat::Internal:
+      return Lua;
+    default:
+      return LADSPA;  // Fallback
+  }
+}
+
+}  // namespace
+
+auto XDAWServer::get_plugins(const xdaw::PluginsRequest& req)
+    -> xdaw::PluginsResponse {
+  auto response = xdaw::PluginsResponse{};
+
+  auto& pm = PluginManager::instance();
+
+  // Collect plugins from all requested formats
+  auto all_plugins = std::vector<PluginInfoPtr>{};
+
+  auto should_include_format = [&req](xdaw::PluginFormat fmt) {
+    if (req.formats.empty()) return true;
+    for (auto f : req.formats) {
+      if (f == fmt) return true;
+    }
+    return false;
+  };
+
+  // Helper to add plugins from a list
+  auto add_plugins = [&](const PluginInfoList& list, xdaw::PluginFormat fmt) {
+    if (!should_include_format(fmt)) return;
+    for (const auto& pi : list) {
+      all_plugins.push_back(pi);
+    }
+  };
+
+#ifdef AUDIOUNIT_SUPPORT
+  add_plugins(pm.au_plugin_info(), xdaw::PluginFormat::AU);
+#endif
+  add_plugins(pm.vst3_plugin_info(), xdaw::PluginFormat::VST3);
+  add_plugins(pm.lv2_plugin_info(), xdaw::PluginFormat::LV2);
+  add_plugins(pm.ladspa_plugin_info(), xdaw::PluginFormat::LADSPA);
+  add_plugins(pm.lua_plugin_info(), xdaw::PluginFormat::Internal);
+#ifdef WINDOWS_VST_SUPPORT
+  add_plugins(pm.windows_vst_plugin_info(), xdaw::PluginFormat::VST2);
+#endif
+#ifdef LXVST_SUPPORT
+  add_plugins(pm.lxvst_plugin_info(), xdaw::PluginFormat::VST2);
+#endif
+#ifdef MACVST_SUPPORT
+  add_plugins(pm.mac_vst_plugin_info(), xdaw::PluginFormat::VST2);
+#endif
+
+  // Filter by type (effects/instruments/midi_tools)
+  auto type_filter_active = req.effects || req.instruments || req.midi_tools;
+
+  auto filtered = std::vector<PluginInfoPtr>{};
+  for (const auto& pi : all_plugins) {
+    if (type_filter_active) {
+      auto dominated = pi->is_effect() && req.effects;
+      auto is_inst = pi->is_instrument() && req.instruments;
+      auto is_midi = pi->needs_midi_input() && req.midi_tools;
+      if (!dominated && !is_inst && !is_midi) continue;
+    }
+    filtered.push_back(pi);
+  }
+
+  response.total_count = static_cast<int32_t>(filtered.size());
+
+  // Apply pagination
+  auto start = static_cast<size_t>(req.offset);
+  auto count = req.limit > 0 ? static_cast<size_t>(req.limit) : filtered.size();
+
+  for (size_t i = start; i < filtered.size() && i < start + count; ++i) {
+    const auto& pi = filtered[i];
+    auto info = xdaw::PluginInfo{};
+    info.unique_id = pi->unique_id;
+    info.format = ardour_to_xdaw_plugin_format(pi->type);
+    info.name = pi->name;
+    info.category = pi->category;
+    info.vendor = pi->creator;
+    info.audio_inputs = pi->n_inputs.n_audio();
+    info.audio_outputs = pi->n_outputs.n_audio();
+    info.midi_inputs = pi->n_inputs.n_midi();
+    info.midi_outputs = pi->n_outputs.n_midi();
+    info.is_instrument = pi->is_instrument();
+    info.is_effect = pi->is_effect();
+    response.plugins.push_back(info);
+  }
+
+  return response;
 }
 
 auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse {
@@ -630,6 +780,123 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           return response;
         }
         playlist->remove_region(region);
+        break;
+      }
+
+      case xdaw::EditOperationType::LoadDevice: {
+        const auto& cmd = op.load_device;
+        std::cerr << "[XDAW] LoadDevice: track_id=" << cmd.track_id
+                  << " plugin_id=" << cmd.plugin_id
+                  << " format=" << static_cast<int>(cmd.plugin_format) << std::endl;
+
+        auto route = _session->route_by_id(PBD::ID(cmd.track_id));
+        if (!route) {
+          response.error_message = "Track not found: " + cmd.track_id;
+          return response;
+        }
+
+        // Find the plugin info
+        auto ardour_type = xdaw_to_ardour_plugin_type(cmd.plugin_format);
+        auto& pm = PluginManager::instance();
+        PluginInfoPtr found_plugin;
+
+        auto search_list = [&](const PluginInfoList& list) {
+          for (const auto& pi : list) {
+            if (pi->unique_id == cmd.plugin_id) {
+              found_plugin = pi;
+              return true;
+            }
+          }
+          return false;
+        };
+
+        // Search the appropriate list based on format
+        switch (cmd.plugin_format) {
+          case xdaw::PluginFormat::AU:
+#ifdef AUDIOUNIT_SUPPORT
+            search_list(pm.au_plugin_info());
+#endif
+            break;
+          case xdaw::PluginFormat::VST3:
+            search_list(pm.vst3_plugin_info());
+            break;
+          case xdaw::PluginFormat::VST2:
+#ifdef LXVST_SUPPORT
+            search_list(pm.lxvst_plugin_info());
+#endif
+#ifdef MACVST_SUPPORT
+            if (!found_plugin) search_list(pm.mac_vst_plugin_info());
+#endif
+#ifdef WINDOWS_VST_SUPPORT
+            if (!found_plugin) search_list(pm.windows_vst_plugin_info());
+#endif
+            break;
+          case xdaw::PluginFormat::LV2:
+            search_list(pm.lv2_plugin_info());
+            break;
+          case xdaw::PluginFormat::LADSPA:
+            search_list(pm.ladspa_plugin_info());
+            break;
+          case xdaw::PluginFormat::Internal:
+            search_list(pm.lua_plugin_info());
+            break;
+          default:
+            break;
+        }
+
+        if (!found_plugin) {
+          response.error_message = "Plugin not found: " + cmd.plugin_id;
+          return response;
+        }
+
+        std::cerr << "[XDAW] Found plugin: " << found_plugin->name << std::endl;
+
+        // Create the plugin instance
+        auto plugin = found_plugin->load(*_session);
+        if (!plugin) {
+          response.error_message = "Failed to load plugin: " + found_plugin->name;
+          return response;
+        }
+
+        // Create PluginInsert processor (route is the TimeDomainProvider)
+        auto insert = std::make_shared<PluginInsert>(*_session, *route, plugin);
+
+        // Determine insert position
+        auto position = static_cast<int>(cmd.insert_index);
+        if (position < 0) {
+          // Insert before fader (end of pre-fader chain)
+          route->add_processor(insert, PreFader);
+        } else {
+          // Insert at specific position
+          route->add_processor_by_index(insert, position);
+        }
+
+        std::cerr << "[XDAW] Device loaded, ID: " << insert->id().to_s() << std::endl;
+        response.created_ids.push_back(insert->id().to_s());
+        break;
+      }
+
+      case xdaw::EditOperationType::RemoveDevice: {
+        const auto& cmd = op.remove_device;
+        std::cerr << "[XDAW] RemoveDevice: track_id=" << cmd.track_id
+                  << " device_id=" << cmd.device_id << std::endl;
+
+        auto route = _session->route_by_id(PBD::ID(cmd.track_id));
+        if (!route) {
+          response.error_message = "Track not found: " + cmd.track_id;
+          return response;
+        }
+
+        // Find the processor by ID
+        auto processor = route->processor_by_id(PBD::ID(cmd.device_id));
+        if (!processor) {
+          response.error_message = "Device not found: " + cmd.device_id;
+          return response;
+        }
+
+        // Remove the processor
+        route->remove_processor(processor);
+        std::cerr << "[XDAW] Device removed: " << cmd.device_id << std::endl;
         break;
       }
 
