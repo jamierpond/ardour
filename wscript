@@ -1180,9 +1180,8 @@ def configure(conf):
     xdaw_sdk_root = os.path.join(conf.path.abspath(), '..', '..', 'sdk')
     conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
     conf.env.LIB_XDAW = ['xdaw']
-    # XDAW SDK lib is built in the xdaw project's build directory
-    # Adjust this path based on your build configuration
-    conf.env.LIBPATH_XDAW = [os.path.join(xdaw_sdk_root, '..', 'build-release', 'sdk')]
+    # XDAW SDK lib built by bazel
+    conf.env.LIBPATH_XDAW = [os.path.join(xdaw_sdk_root, '..', 'bazel-bin', 'sdk')]
     conf.msg('Checking for XDAW SDK', xdaw_sdk_root)
 
     autowaf.check_pkg(conf, 'libusb-1.0', uselib_store='USB', atleast_version='1.0.16', mandatory=False)
