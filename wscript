@@ -1189,6 +1189,7 @@ def configure(conf):
     conf.env.INCLUDES_XDAW = [os.path.join(xdaw_sdk_root, 'include')]
     conf.env.LIB_XDAW = ['xdaw_shared']
     conf.env.LIBPATH_XDAW = [xdaw_lib_path]
+    conf.env.RPATH_XDAW = [xdaw_lib_path]
     conf.msg('Checking for XDAW SDK', xdaw_sdk_root)
 
     autowaf.check_pkg(conf, 'libusb-1.0', uselib_store='USB', atleast_version='1.0.16', mandatory=False)
