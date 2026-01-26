@@ -50,6 +50,8 @@
 #include "ardour/track.h"
 #include "ardour/types.h"
 
+#include "evoral/Parameter.h"
+
 #include "pbd/id.h"
 
 #include "temporal/beats.h"
@@ -378,6 +380,30 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
           auto info = plugin->get_info();
           device.plugin_id = info->unique_id;
           device.format = ardour_to_xdaw_plugin_format(info->type);
+
+          // Populate parameters
+          auto param_count = plugin->parameter_count();
+          for (uint32_t i = 0; i < param_count; ++i) {
+            bool ok = false;
+            auto param_idx = plugin->nth_parameter(i, ok);
+            if (!ok) continue;
+
+            ParameterDescriptor desc;
+            if (plugin->get_parameter_descriptor(param_idx, desc) != 0) {
+              continue;
+            }
+
+            auto param = xdaw::DeviceParameter{};
+            param.id = std::to_string(param_idx);
+            param.name = desc.label.empty() ? ("Param " + std::to_string(param_idx)) : desc.label;
+            param.value = plugin->get_parameter(param_idx);
+            param.min_value = desc.lower;
+            param.max_value = desc.upper;
+            // TODO: Get display value from plugin->print_parameter()
+            param.display_value = std::to_string(param.value);
+
+            device.parameters.push_back(param);
+          }
         }
 
         track.devices.push_back(device);
@@ -793,7 +819,6 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
 
         // Find the plugin info
-        auto ardour_type = xdaw_to_ardour_plugin_type(cmd.plugin_format);
         auto& pm = PluginManager::instance();
         PluginInfoPtr found_plugin;
 
@@ -894,6 +919,41 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         // Remove the processor
         route->remove_processor(processor);
         std::cerr << "[XDAW] Device removed: " << cmd.device_id << std::endl;
+        break;
+      }
+
+      case xdaw::EditOperationType::SetDeviceParam: {
+        const auto& cmd = op.set_device_param;
+        std::cerr << "[XDAW] SetDeviceParam: device_id=" << cmd.device_id
+                  << " param_id=" << cmd.param_id
+                  << " value=" << cmd.value << std::endl;
+
+        // Find the processor across all routes
+        std::shared_ptr<PluginInsert> found_insert;
+        auto routes = _session->get_routes();
+        for (const auto& route : *routes) {
+          auto processor = route->processor_by_id(PBD::ID(cmd.device_id));
+          if (auto pi = std::dynamic_pointer_cast<PluginInsert>(processor)) {
+            found_insert = pi;
+            break;
+          }
+        }
+
+        if (!found_insert) {
+          response.error_message = "Device not found: " + cmd.device_id;
+          return response;
+        }
+
+        // Parse param_id as integer and set via automation control
+        auto param_idx = static_cast<uint32_t>(std::stoul(cmd.param_id));
+        auto param = Evoral::Parameter(PluginAutomation, 0, param_idx);
+        auto ctrl = found_insert->automation_control(param);
+        if (!ctrl) {
+          response.error_message = "Parameter not found: " + cmd.param_id;
+          return response;
+        }
+        ctrl->set_value(cmd.value, PBD::Controllable::NoGroup);
+        std::cerr << "[XDAW] Parameter set: " << cmd.param_id << " = " << cmd.value << std::endl;
         break;
       }
 
