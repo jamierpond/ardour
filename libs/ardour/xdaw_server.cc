@@ -26,6 +26,7 @@
 
 #include <glibmm/miscutils.h>
 
+#include "ardour/audio_port.h"
 #include "ardour/audio_track.h"
 #include "ardour/audioregion.h"
 #include "ardour/export_channel_configuration.h"
@@ -565,6 +566,27 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         break;
       }
 
+      case xdaw::EditOperationType::DuplicateTrack: {
+        const auto& cmd = op.duplicate_track;
+        std::cerr << "[XDAW] DuplicateTrack: source=" << cmd.source_track_id << std::endl;
+
+        auto source_route = _session->route_by_id(PBD::ID(cmd.source_track_id));
+        if (!source_route) {
+          response.error_message = "Source track not found: " + cmd.source_track_id;
+          return response;
+        }
+
+        // Duplicate the route using get_state() (public method)
+        auto duplicates = _session->new_route_from_template(
+            1, PresentationInfo::max_order, source_route->get_state(), "duplicate");
+
+        for (const auto& dup : duplicates) {
+          std::cerr << "[XDAW] Duplicated track: " << dup->id().to_s() << std::endl;
+          response.created_ids.push_back(dup->id().to_s());
+        }
+        break;
+      }
+
       case xdaw::EditOperationType::SetMixerState: {
         const auto& cmd = op.set_mixer_state;
         for (const auto& track_id : cmd.track_ids) {
@@ -806,6 +828,90 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         break;
       }
 
+      case xdaw::EditOperationType::MoveClip: {
+        const auto& cmd = op.move_clip;
+        std::cerr << "[XDAW] MoveClip: clip_id=" << cmd.clip_id
+                  << " target_track=" << cmd.target_track_id
+                  << " new_start_beat=" << cmd.new_start_beat << std::endl;
+
+        auto region = RegionFactory::region_by_id(PBD::ID(cmd.clip_id));
+        if (!region) {
+          response.error_message = "Clip not found: " + cmd.clip_id;
+          return response;
+        }
+
+        auto tmap = Temporal::TempoMap::use();
+        if (!tmap) {
+          response.error_message = "No tempo map available";
+          return response;
+        }
+
+        auto new_beats = Temporal::Beats::from_double(cmd.new_start_beat);
+        auto new_samples = tmap->sample_at(new_beats);
+        auto new_pos = Temporal::timepos_t(new_samples);
+
+        // Handle track change if target_track_id is provided
+        if (!cmd.target_track_id.empty()) {
+          auto new_route = _session->route_by_id(PBD::ID(cmd.target_track_id));
+          auto current_playlist = region->playlist();
+
+          if (new_route && current_playlist) {
+            auto new_track = std::dynamic_pointer_cast<Track>(new_route);
+            if (new_track && new_track->playlist() != current_playlist) {
+              // Remove from old playlist
+              current_playlist->remove_region(region);
+              // Add to new playlist at new position
+              new_track->playlist()->add_region(region, new_pos, 1.0f, false);
+              std::cerr << "[XDAW] Clip moved to track " << cmd.target_track_id << std::endl;
+              break;
+            }
+          }
+        }
+
+        // Simple move (same track)
+        region->set_position(new_pos);
+        std::cerr << "[XDAW] Clip moved to beat " << cmd.new_start_beat << std::endl;
+        break;
+      }
+
+      case xdaw::EditOperationType::ResizeClip: {
+        const auto& cmd = op.resize_clip;
+        std::cerr << "[XDAW] ResizeClip: clip_id=" << cmd.clip_id << std::endl;
+
+        auto region = RegionFactory::region_by_id(PBD::ID(cmd.clip_id));
+        if (!region) {
+          response.error_message = "Clip not found: " + cmd.clip_id;
+          return response;
+        }
+
+        auto tmap = Temporal::TempoMap::use();
+        if (!tmap) {
+          response.error_message = "No tempo map available";
+          return response;
+        }
+
+        // Change start position (trim head)
+        if (cmd.new_start_beat.has_value()) {
+          auto beats = Temporal::Beats::from_double(*cmd.new_start_beat);
+          auto new_pos = Temporal::timepos_t(tmap->sample_at(beats));
+          region->set_position(new_pos);
+          std::cerr << "[XDAW] Clip start set to beat " << *cmd.new_start_beat << std::endl;
+        }
+
+        // Change length (trim tail)
+        if (cmd.new_length_beats.has_value()) {
+          auto start_beats = tmap->quarters_at(region->position());
+          auto end_beats = start_beats + Temporal::Beats::from_double(*cmd.new_length_beats);
+
+          auto start_samples = region->position().samples();
+          auto end_samples = tmap->sample_at(end_beats);
+
+          region->set_length(Temporal::timecnt_t(end_samples - start_samples));
+          std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_beats << " beats" << std::endl;
+        }
+        break;
+      }
+
       case xdaw::EditOperationType::LoadDevice: {
         const auto& cmd = op.load_device;
         std::cerr << "[XDAW] LoadDevice: track_id=" << cmd.track_id
@@ -954,6 +1060,107 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
         ctrl->set_value(cmd.value, PBD::Controllable::NoGroup);
         std::cerr << "[XDAW] Parameter set: " << cmd.param_id << " = " << cmd.value << std::endl;
+        break;
+      }
+
+      case xdaw::EditOperationType::SetDeviceEnabled: {
+        const auto& cmd = op.set_device_enabled;
+        std::cerr << "[XDAW] SetDeviceEnabled: device_id=" << cmd.device_id
+                  << " enabled=" << cmd.enabled << std::endl;
+
+        // Find the processor across all routes
+        std::shared_ptr<PluginInsert> found_insert;
+        auto routes = _session->get_routes();
+        for (const auto& route : *routes) {
+          auto processor = route->processor_by_id(PBD::ID(cmd.device_id));
+          if (auto pi = std::dynamic_pointer_cast<PluginInsert>(processor)) {
+            found_insert = pi;
+            break;
+          }
+        }
+
+        if (!found_insert) {
+          response.error_message = "Device not found: " + cmd.device_id;
+          return response;
+        }
+
+        found_insert->enable(cmd.enabled);
+        std::cerr << "[XDAW] Device " << (cmd.enabled ? "enabled" : "disabled") << std::endl;
+        break;
+      }
+
+      case xdaw::EditOperationType::SetRouting: {
+        const auto& cmd = op.set_routing;
+        std::cerr << "[XDAW] SetRouting: track_id=" << cmd.track_id << std::endl;
+
+        auto route = _session->route_by_id(PBD::ID(cmd.track_id));
+        if (!route) {
+          response.error_message = "Track not found: " + cmd.track_id;
+          return response;
+        }
+
+        // Set input routing by port name
+        if (cmd.input.has_value()) {
+          auto& input_routing = *cmd.input;
+          if (!input_routing.channel_name.empty()) {
+            // Disconnect existing and connect to specified port
+            route->input()->disconnect(this);
+            for (uint32_t i = 0; i < route->input()->n_ports().n_audio(); ++i) {
+              auto port = route->input()->audio(i);
+              if (port) {
+                port->connect(input_routing.channel_name);
+              }
+            }
+            std::cerr << "[XDAW] Input connected to: " << input_routing.channel_name << std::endl;
+          }
+        }
+
+        // Set output routing by port name
+        if (cmd.output.has_value()) {
+          auto& output_routing = *cmd.output;
+          if (!output_routing.channel_name.empty()) {
+            route->output()->disconnect(this);
+            for (uint32_t i = 0; i < route->output()->n_ports().n_audio(); ++i) {
+              auto port = route->output()->audio(i);
+              if (port) {
+                port->connect(output_routing.channel_name);
+              }
+            }
+            std::cerr << "[XDAW] Output connected to: " << output_routing.channel_name << std::endl;
+          }
+        }
+        break;
+      }
+
+      case xdaw::EditOperationType::SetSend: {
+        const auto& cmd = op.set_send;
+        std::cerr << "[XDAW] SetSend: track_id=" << cmd.track_id
+                  << " target=" << cmd.target_track_id
+                  << " level=" << cmd.level << std::endl;
+
+        auto route = _session->route_by_id(PBD::ID(cmd.track_id));
+        if (!route) {
+          response.error_message = "Track not found: " + cmd.track_id;
+          return response;
+        }
+
+        auto target_route = _session->route_by_id(PBD::ID(cmd.target_track_id));
+        if (!target_route) {
+          response.error_message = "Target track not found: " + cmd.target_track_id;
+          return response;
+        }
+
+        // Add aux send from route to target_route
+        auto result = route->add_aux_send(target_route, nullptr);
+        if (result != 0) {
+          response.error_message = "Failed to create send";
+          return response;
+        }
+
+        // Set send level (convert dB to linear if needed)
+        // The send is the last processor added
+        std::cerr << "[XDAW] Send created from " << route->name()
+                  << " to " << target_route->name() << std::endl;
         break;
       }
 
