@@ -20,10 +20,10 @@
 #include <sstream>
 #include <vector>
 
-#include "glib-2.0/gio/gio.h"
-#include "glib-2.0/glib/gstdio.h"
-#include "glibmm-2.4/glibmm/main.h"
-#include "glibmm-2.4/glibmm/miscutils.h"
+#include <gio/gio.h>
+#include <glib/gstdio.h>
+#include <glibmm/main.h>
+#include <glibmm/miscutils.h>
 #include "pbd/debug.h"
 #include "pbd/i18n.h"
 

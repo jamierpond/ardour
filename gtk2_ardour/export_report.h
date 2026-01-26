@@ -19,7 +19,7 @@
 #ifndef _gtkardour_export_report_h_
 #define _gtkardour_export_report_h_
 
-#include <cairo/cairo.h>
+#include <cairo.h>
 #include <ytkmm/notebook.h>
 #include <ytkmm/togglebutton.h>
 

@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <cairo/cairo.h>
+#include <cairo.h>
 #include <pango/pango.h>
 #include <pango/pangocairo.h>
 

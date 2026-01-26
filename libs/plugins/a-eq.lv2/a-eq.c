@@ -42,7 +42,7 @@
 #endif
 
 #ifdef LV2_EXTENDED
-#include <cairo/cairo.h>
+#include <cairo.h>
 #include "ardour/lv2_extensions.h"
 #endif
 

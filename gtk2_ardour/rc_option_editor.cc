@@ -29,7 +29,7 @@
 #include "gtk2ardour-config.h"
 #endif
 
-#include <cairo/cairo.h>
+#include <cairo.h>
 
 #include <boost/algorithm/string.hpp>
 
