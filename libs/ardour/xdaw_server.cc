@@ -115,11 +115,27 @@ auto XDAWServer::setup_handlers() -> void {
   });
 }
 
-auto XDAWServer::start() -> void { server_->start(); }
+auto XDAWServer::start() -> void {
+  server_->start();
+  // Auto-start pairing mode so users can connect immediately
+  start_pairing_mode();
+}
 
 auto XDAWServer::stop() -> void { server_->stop(); }
 
 auto XDAWServer::is_running() const -> bool { return server_->is_running(); }
+
+auto XDAWServer::start_pairing_mode() -> std::string {
+  return server_->start_pairing_mode();
+}
+
+auto XDAWServer::cancel_pairing_mode() -> void {
+  server_->cancel_pairing_mode();
+}
+
+auto XDAWServer::is_pairing_active() const -> bool {
+  return server_->is_pairing_active();
+}
 
 auto XDAWServer::process_pending_tasks() -> void {
   server_->process_pending_tasks();

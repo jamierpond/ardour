@@ -67,6 +67,22 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
   [[nodiscard]] auto is_running() const -> bool;
 
   /**
+   * Start pairing mode. Generates a PIN and emits PinDisplayRequest.
+   * Returns the generated PIN.
+   */
+  [[nodiscard]] auto start_pairing_mode() -> std::string;
+
+  /**
+   * Cancel pairing mode. Emits PinDismissRequest.
+   */
+  auto cancel_pairing_mode() -> void;
+
+  /**
+   * Check if pairing mode is active.
+   */
+  [[nodiscard]] auto is_pairing_active() const -> bool;
+
+  /**
    * Process pending gRPC tasks. Call from GTK idle handler.
    */
   auto process_pending_tasks() -> void;
