@@ -101,6 +101,17 @@ auto XDAWServer::setup_handlers() -> void {
   server_->set_notification_handler([this]() {
     tasks_pending_.store(true, std::memory_order_release);
   });
+
+  // Authentication handlers
+  // Note: In a production implementation, these would show GTK dialogs
+  server_->set_pin_display_handler([](const std::string& pin) {
+    std::cerr << "[XDAW AUTH] PIN for pairing: " << pin << std::endl;
+    std::cerr << "[XDAW AUTH] (In production, display this in a GTK dialog)" << std::endl;
+  });
+
+  server_->set_pin_dismiss_handler([]() {
+    std::cerr << "[XDAW AUTH] Pairing complete, dismissing PIN dialog" << std::endl;
+  });
 }
 
 auto XDAWServer::start() -> void { server_->start(); }
