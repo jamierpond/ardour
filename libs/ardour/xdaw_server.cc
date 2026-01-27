@@ -117,8 +117,6 @@ auto XDAWServer::setup_handlers() -> void {
 
 auto XDAWServer::start() -> void {
   server_->start();
-  // Auto-start pairing mode so users can connect immediately
-  start_pairing_mode();
 }
 
 auto XDAWServer::stop() -> void { server_->stop(); }
