@@ -218,6 +218,17 @@ ARDOUR_UI::set_session (Session *s)
 		[this]() {
 			if (!_xdaw_server) {
 				_xdaw_server = std::make_unique<ARDOUR::XDAWServer>(50051);
+
+				// Connect PIN display signals for authentication UI
+				_xdaw_server->PinDisplayRequest.connect(
+					_xdaw_connections, MISSING_INVALIDATOR,
+					std::bind(&ARDOUR_UI::xdaw_show_pin_dialog, this, std::placeholders::_1),
+					gui_context());
+				_xdaw_server->PinDismissRequest.connect(
+					_xdaw_connections, MISSING_INVALIDATOR,
+					std::bind(&ARDOUR_UI::xdaw_hide_pin_dialog, this),
+					gui_context());
+
 				_xdaw_server->start();
 				// Use a 50ms timeout instead of idle to avoid starving GUI updates
 				_xdaw_idle_connection = Glib::signal_timeout().connect(
@@ -1152,4 +1163,55 @@ ARDOUR_UI::xdaw_idle_handler ()
 		_xdaw_server->process_pending_tasks();
 	}
 	return true; /* keep calling */
+}
+
+void
+ARDOUR_UI::xdaw_show_pin_dialog (std::string pin)
+{
+	// Close any existing dialog first
+	xdaw_hide_pin_dialog();
+
+	// Create a new dialog with the PIN
+	// Format PIN with spaces for readability (e.g., "123 456")
+	std::string formatted_pin = pin;
+	if (pin.length() == 6) {
+		formatted_pin = pin.substr(0, 3) + " " + pin.substr(3, 3);
+	}
+
+	std::string message = std::string("<span size=\"xx-large\" weight=\"bold\">") +
+	                      formatted_pin + "</span>\n\n" +
+	                      "Enter this PIN in your XDAW client to connect.";
+
+	_xdaw_pin_dialog = new Gtk::MessageDialog(
+		_main_window,
+		message,
+		true,  // use_markup
+		Gtk::MESSAGE_INFO,
+		Gtk::BUTTONS_CANCEL,
+		false  // modal
+	);
+
+	_xdaw_pin_dialog->set_title("XDAW Pairing");
+	_xdaw_pin_dialog->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
+
+	// Handle cancel/close
+	_xdaw_pin_dialog->signal_response().connect([this](int /* response */) {
+		xdaw_hide_pin_dialog();
+		// Optionally cancel pairing mode in the server
+		if (_xdaw_server) {
+			// _xdaw_server->cancel_pairing_mode(); // Would need to expose this
+		}
+	});
+
+	_xdaw_pin_dialog->show();
+}
+
+void
+ARDOUR_UI::xdaw_hide_pin_dialog ()
+{
+	if (_xdaw_pin_dialog) {
+		_xdaw_pin_dialog->hide();
+		delete _xdaw_pin_dialog;
+		_xdaw_pin_dialog = nullptr;
+	}
 }

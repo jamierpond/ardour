@@ -474,7 +474,11 @@ private:
 	/* XDAW server for remote control */
 	std::unique_ptr<ARDOUR::XDAWServer> _xdaw_server;
 	sigc::connection _xdaw_idle_connection;
+	PBD::ScopedConnectionList _xdaw_connections;
+	Gtk::MessageDialog* _xdaw_pin_dialog;
 	bool xdaw_idle_handler();
+	void xdaw_show_pin_dialog(std::string pin);
+	void xdaw_hide_pin_dialog();
 
 	void hide_tabbable (ArdourWidgets::Tabbable*);
 	void detach_tabbable (ArdourWidgets::Tabbable*);

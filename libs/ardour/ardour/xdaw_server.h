@@ -21,6 +21,9 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <string>
+
+#include "pbd/signals.h"
 
 #include "ardour/libardour_visibility.h"
 #include "ardour/session_handle.h"
@@ -73,6 +76,17 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
    * Returns true if tasks were pending.
    */
   [[nodiscard]] auto has_pending_tasks() -> bool;
+
+  /**
+   * Signal emitted when a PIN should be displayed for pairing.
+   * The string parameter is the 6-digit PIN to show to the user.
+   */
+  PBD::Signal<void(std::string)> PinDisplayRequest;
+
+  /**
+   * Signal emitted when the PIN dialog should be dismissed.
+   */
+  PBD::Signal<void()> PinDismissRequest;
 
  private:
   auto setup_handlers() -> void;
