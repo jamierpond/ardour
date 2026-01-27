@@ -28,6 +28,8 @@
 #include "ardour/libardour_visibility.h"
 #include "ardour/session_handle.h"
 
+// TODO CLAUDE THIS IS A FUCKING EMBARRASSMENT FIX IT
+// THIS SHOULD BE DONE IN THE SDK NOT BY THE CONSUMER OF THE SDK
 namespace xdaw {
 class Server;
 struct SessionRequest;
