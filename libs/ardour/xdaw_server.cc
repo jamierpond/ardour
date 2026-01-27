@@ -1288,6 +1288,14 @@ auto XDAWServer::start_render(const xdaw::RenderRequest& req)
     return result;
   }
 
+  // Check if an export is already in progress
+  auto status = _session->get_export_status();
+  if (status->running()) {
+    std::cerr << "[XDAW] ERROR: Export already in progress!" << std::endl;
+    result.error_message = "Export already in progress";
+    return result;
+  }
+
   // Convert beats to samples
   auto tmap = Temporal::TempoMap::use();
   if (!tmap) {
