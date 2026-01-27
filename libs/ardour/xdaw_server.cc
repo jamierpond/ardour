@@ -69,6 +69,7 @@ XDAWServer::XDAWServer(std::int32_t port)
           .supports_realtime_monitor = false,
           .supports_browser = false,
           .supports_analysis = false,
+          .auth_mode = xdaw::AuthMode::Required,
       })) {
   setup_handlers();
 }
