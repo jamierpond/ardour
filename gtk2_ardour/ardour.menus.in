@@ -52,6 +52,7 @@
       <menuitem action='ToggleSurroundMaster'/>
 #endif
       <menuitem action='LoudnessAssistant'/>
+      <menuitem action='XDAWPairing'/>
 
       <menu name='MonitorMenu' action='MonitorMenu'>
         <menuitem action='UseMonitorSection'/>
