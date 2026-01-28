@@ -48,6 +48,7 @@
 #include "ardour/playlist.h"
 #include "ardour/plugin_insert.h"
 #include "ardour/plugin_manager.h"
+#include "ardour/rc_configuration.h"
 #include "ardour/region.h"
 #include "ardour/region_factory.h"
 #include "ardour/route.h"
@@ -1188,6 +1189,13 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         // Create PluginInsert processor (route is the TimeDomainProvider)
         auto insert = std::make_shared<PluginInsert>(*_session, *route, plugin);
 
+        // Temporarily disable instrument setup dialogs for programmatic loading
+        // This prevents the PluginSetup modal from blocking the API call
+        auto old_ask_replace = Config->get_ask_replace_instrument();
+        auto old_ask_setup = Config->get_ask_setup_instrument();
+        Config->set_ask_replace_instrument(false);
+        Config->set_ask_setup_instrument(false);
+
         // Determine insert position
         auto position = static_cast<int>(cmd.insert_index);
         if (position < 0) {
@@ -1197,6 +1205,10 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           // Insert at specific position
           route->add_processor_by_index(insert, position);
         }
+
+        // Restore original settings
+        Config->set_ask_replace_instrument(old_ask_replace);
+        Config->set_ask_setup_instrument(old_ask_setup);
 
         std::cerr << "[XDAW] Device loaded, ID: " << insert->id().to_s() << std::endl;
         response.created_ids.push_back(insert->id().to_s());
