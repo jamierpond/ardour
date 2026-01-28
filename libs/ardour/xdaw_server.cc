@@ -21,6 +21,7 @@
 #include <xdaw/server.h>
 #include <xdaw/types.h>
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 
@@ -36,8 +37,14 @@
 #include "ardour/export_status.h"
 #include "ardour/export_timespan.h"
 #include "ardour/gain_control.h"
+#include "ardour/midi_model.h"
+#include "ardour/midi_region.h"
 #include "ardour/midi_track.h"
 #include "ardour/panner_shell.h"
+#include "ardour/smf_source.h"
+
+#include "evoral/Note.h"
+#include "evoral/SMF.h"
 #include "ardour/playlist.h"
 #include "ardour/plugin_insert.h"
 #include "ardour/plugin_manager.h"
@@ -701,14 +708,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
 
       case xdaw::EditOperationType::CreateClip: {
         const auto& cmd = op.create_clip;
-        std::cerr << "[XDAW] CreateClip: track_id=" << cmd.track_id
-                  << " file=" << cmd.content.audio_file_path << std::endl;
-
-        // Validate we have audio content
-        if (!cmd.content.is_audio_file()) {
-          response.error_message = "Only audio file clips are supported";
-          return response;
-        }
+        std::cerr << "[XDAW] CreateClip: track_id=" << cmd.track_id << std::endl;
 
         // Get the target track
         std::cerr << "[XDAW] Looking up route by ID: " << cmd.track_id << std::endl;
@@ -735,51 +735,6 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
         std::cerr << "[XDAW] Got playlist: " << playlist->name() << std::endl;
 
-        // Create source(s) from the audio file
-        // Multi-channel files need one source per channel
-        std::cerr << "[XDAW] Creating sources from: " << cmd.content.audio_file_path << std::endl;
-        SourceList sources;
-        try {
-          // Get channel count from file
-          SoundFileInfo sf_info;
-          std::string error_msg;
-          if (!SndFileSource::get_soundfile_info(
-                  cmd.content.audio_file_path, sf_info, error_msg)) {
-            std::cerr << "[XDAW] ERROR: Cannot read audio file: " << error_msg << std::endl;
-            response.error_message = "Cannot read audio file: " + error_msg;
-            return response;
-          }
-          std::cerr << "[XDAW] File has " << sf_info.channels << " channels, "
-                    << sf_info.samplerate << " Hz" << std::endl;
-
-          for (uint32_t chn = 0; chn < sf_info.channels; ++chn) {
-            std::cerr << "[XDAW] Creating source for channel " << chn << std::endl;
-            auto source = SourceFactory::createExternal(
-                DataType::AUDIO, *_session, cmd.content.audio_file_path,
-                static_cast<int>(chn), Source::Flag(0), true);
-            if (!source) {
-              std::cerr << "[XDAW] ERROR: Failed to create source for channel " << chn << std::endl;
-              response.error_message = "Failed to create source for channel " +
-                                       std::to_string(chn);
-              return response;
-            }
-            std::cerr << "[XDAW] Created source: " << source->name() << std::endl;
-            sources.push_back(source);
-          }
-        } catch (const std::exception& e) {
-          std::cerr << "[XDAW] EXCEPTION in source creation: " << e.what() << std::endl;
-          response.error_message =
-              std::string("Source creation failed: ") + e.what();
-          return response;
-        }
-
-        if (sources.empty()) {
-          std::cerr << "[XDAW] ERROR: No sources created" << std::endl;
-          response.error_message = "No sources created from file";
-          return response;
-        }
-        std::cerr << "[XDAW] Created " << sources.size() << " sources" << std::endl;
-
         // Convert quarter note position to samples
         auto tmap = Temporal::TempoMap::use();
         if (!tmap) {
@@ -790,41 +745,224 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         auto start_beats = Temporal::Beats::from_double(cmd.start_quarters);
         auto start_samples = tmap->sample_at(start_beats);
 
-        // Create a "whole file" region from the sources
-        // Must set start, length, and other properties for the region to have audio
-        std::cerr << "[XDAW] Creating whole_file region..." << std::endl;
-        std::cerr << "[XDAW] Source length: " << sources[0]->length().samples() << " samples" << std::endl;
-
-        auto plist = PBD::PropertyList{};
-        plist.add(ARDOUR::Properties::start, Temporal::timecnt_t(Temporal::AudioTime));
-        plist.add(ARDOUR::Properties::length, sources[0]->length());
-        plist.add(ARDOUR::Properties::name, cmd.name.empty() ? sources[0]->name() : cmd.name);
-        plist.add(ARDOUR::Properties::layer, 0);
-        plist.add(ARDOUR::Properties::whole_file, true);
-        plist.add(ARDOUR::Properties::external, true);
-        plist.add(ARDOUR::Properties::opaque, true);
-
         std::shared_ptr<Region> region;
-        try {
-          region = RegionFactory::create(sources, plist, true, nullptr);
-          if (!region) {
-            std::cerr << "[XDAW] ERROR: RegionFactory::create returned null" << std::endl;
-            response.error_message = "Failed to create region";
+
+        if (cmd.content.is_midi()) {
+          // === MIDI CLIP CREATION ===
+          std::cerr << "[XDAW] Creating MIDI clip with " << cmd.content.midi.notes.size() << " notes" << std::endl;
+
+          auto midi_track = std::dynamic_pointer_cast<MidiTrack>(track);
+          if (!midi_track) {
+            response.error_message = "Track is not a MIDI track";
             return response;
           }
-          std::cerr << "[XDAW] Created region: " << region->name()
-                    << " length=" << region->length().samples() << " samples" << std::endl;
-        } catch (const std::exception& e) {
-          std::cerr << "[XDAW] EXCEPTION in region creation: " << e.what() << std::endl;
-          response.error_message =
-              std::string("Region creation failed: ") + e.what();
+
+          // Generate a unique path for the MIDI source file
+          auto clip_name = cmd.name.empty() ? "MIDI Clip" : cmd.name;
+          auto source_path = _session->new_midi_source_path(clip_name);
+          std::cerr << "[XDAW] MIDI source path: " << source_path << std::endl;
+
+          // Calculate region length from notes or use provided length
+          auto length_quarters = cmd.length_quarters;
+          if (length_quarters <= 0.0 && !cmd.content.midi.notes.empty()) {
+            // Calculate from notes
+            double max_end = 0.0;
+            for (const auto& note : cmd.content.midi.notes) {
+              auto note_end = note.start_quarters + note.length_quarters;
+              if (note_end > max_end) max_end = note_end;
+            }
+            length_quarters = max_end;
+          }
+          if (length_quarters <= 0.0) {
+            length_quarters = 4.0;  // Default to 1 bar
+          }
+
+          auto length_beats = Temporal::Beats::from_double(length_quarters);
+
+          // Create a writable SMF source
+          std::shared_ptr<SMFSource> midi_source;
+          try {
+            midi_source = std::dynamic_pointer_cast<SMFSource>(
+                SourceFactory::createWritable(DataType::MIDI, *_session, source_path,
+                                              false, _session->sample_rate()));
+            if (!midi_source) {
+              response.error_message = "Failed to create MIDI source";
+              return response;
+            }
+
+            if (midi_source->create(source_path)) {
+              response.error_message = "Failed to create MIDI file at: " + source_path;
+              return response;
+            }
+          } catch (const std::exception& e) {
+            response.error_message = std::string("MIDI source creation failed: ") + e.what();
+            return response;
+          }
+
+          // Write MIDI notes to the source
+          try {
+            Source::WriterLock lck(midi_source->mutex());
+            midi_source->mark_streaming_midi_write_started(lck, Sustained);
+            midi_source->begin_write();
+
+            // Collect all MIDI events (note-on and note-off) with their times
+            struct MidiEvent {
+              Temporal::Beats time;
+              uint8_t data[3];
+              bool is_note_off;  // For sorting: note-off before note-on at same time
+            };
+            std::vector<MidiEvent> events;
+            events.reserve(cmd.content.midi.notes.size() * 2);
+
+            for (const auto& note : cmd.content.midi.notes) {
+              auto note_start = Temporal::Beats::from_double(note.start_quarters);
+              auto note_end = Temporal::Beats::from_double(note.start_quarters + note.length_quarters);
+
+              // Note-on event
+              events.push_back({
+                  note_start,
+                  {static_cast<uint8_t>(0x90),
+                   static_cast<uint8_t>(note.pitch & 0x7F),
+                   static_cast<uint8_t>(note.velocity & 0x7F)},
+                  false});
+
+              // Note-off event
+              events.push_back({
+                  note_end,
+                  {static_cast<uint8_t>(0x80),
+                   static_cast<uint8_t>(note.pitch & 0x7F),
+                   static_cast<uint8_t>(0x40)},
+                  true});
+            }
+
+            // Sort events by time (note-offs before note-ons at same time)
+            std::sort(events.begin(), events.end(), [](const MidiEvent& a, const MidiEvent& b) {
+              if (a.time != b.time) return a.time < b.time;
+              return a.is_note_off && !b.is_note_off;  // note-off first
+            });
+
+            // Write sorted events
+            for (const auto& evt : events) {
+              Evoral::Event<Temporal::Beats> event(
+                  Evoral::MIDI_EVENT, evt.time, 3, const_cast<uint8_t*>(evt.data), false);
+              midi_source->append_event_beats(lck, event);
+            }
+
+            midi_source->end_write(source_path);
+            midi_source->mark_nonremovable();
+            midi_source->mark_streaming_write_completed(lck, Temporal::timecnt_t(length_beats));
+            std::cerr << "[XDAW] MIDI source written successfully with " << events.size() << " events" << std::endl;
+          } catch (const std::exception& e) {
+            response.error_message = std::string("Failed to write MIDI data: ") + e.what();
+            return response;
+          }
+
+          // Create region from the MIDI source
+          SourceList sources;
+          sources.push_back(midi_source);
+
+          auto plist = PBD::PropertyList{};
+          plist.add(ARDOUR::Properties::start, Temporal::timecnt_t(Temporal::Beats(), Temporal::timepos_t(Temporal::Beats())));
+          plist.add(ARDOUR::Properties::length, Temporal::timecnt_t(length_beats));
+          plist.add(ARDOUR::Properties::name, clip_name);
+          plist.add(ARDOUR::Properties::layer, 0);
+
+          try {
+            region = RegionFactory::create(sources, plist, true, nullptr);
+            if (!region) {
+              response.error_message = "Failed to create MIDI region";
+              return response;
+            }
+            std::cerr << "[XDAW] Created MIDI region: " << region->name() << std::endl;
+          } catch (const std::exception& e) {
+            response.error_message = std::string("MIDI region creation failed: ") + e.what();
+            return response;
+          }
+
+        } else if (cmd.content.is_audio_file()) {
+          // === AUDIO CLIP CREATION ===
+          std::cerr << "[XDAW] Creating audio clip from: " << cmd.content.audio_file_path << std::endl;
+
+          SourceList sources;
+          try {
+            // Get channel count from file
+            SoundFileInfo sf_info;
+            std::string error_msg;
+            if (!SndFileSource::get_soundfile_info(
+                    cmd.content.audio_file_path, sf_info, error_msg)) {
+              std::cerr << "[XDAW] ERROR: Cannot read audio file: " << error_msg << std::endl;
+              response.error_message = "Cannot read audio file: " + error_msg;
+              return response;
+            }
+            std::cerr << "[XDAW] File has " << sf_info.channels << " channels, "
+                      << sf_info.samplerate << " Hz" << std::endl;
+
+            for (uint32_t chn = 0; chn < sf_info.channels; ++chn) {
+              std::cerr << "[XDAW] Creating source for channel " << chn << std::endl;
+              auto source = SourceFactory::createExternal(
+                  DataType::AUDIO, *_session, cmd.content.audio_file_path,
+                  static_cast<int>(chn), Source::Flag(0), true);
+              if (!source) {
+                std::cerr << "[XDAW] ERROR: Failed to create source for channel " << chn << std::endl;
+                response.error_message = "Failed to create source for channel " +
+                                         std::to_string(chn);
+                return response;
+              }
+              std::cerr << "[XDAW] Created source: " << source->name() << std::endl;
+              sources.push_back(source);
+            }
+          } catch (const std::exception& e) {
+            std::cerr << "[XDAW] EXCEPTION in source creation: " << e.what() << std::endl;
+            response.error_message =
+                std::string("Source creation failed: ") + e.what();
+            return response;
+          }
+
+          if (sources.empty()) {
+            std::cerr << "[XDAW] ERROR: No sources created" << std::endl;
+            response.error_message = "No sources created from file";
+            return response;
+          }
+          std::cerr << "[XDAW] Created " << sources.size() << " sources" << std::endl;
+
+          // Create a "whole file" region from the sources
+          std::cerr << "[XDAW] Creating whole_file region..." << std::endl;
+          std::cerr << "[XDAW] Source length: " << sources[0]->length().samples() << " samples" << std::endl;
+
+          auto plist = PBD::PropertyList{};
+          plist.add(ARDOUR::Properties::start, Temporal::timecnt_t(Temporal::AudioTime));
+          plist.add(ARDOUR::Properties::length, sources[0]->length());
+          plist.add(ARDOUR::Properties::name, cmd.name.empty() ? sources[0]->name() : cmd.name);
+          plist.add(ARDOUR::Properties::layer, 0);
+          plist.add(ARDOUR::Properties::whole_file, true);
+          plist.add(ARDOUR::Properties::external, true);
+          plist.add(ARDOUR::Properties::opaque, true);
+
+          try {
+            region = RegionFactory::create(sources, plist, true, nullptr);
+            if (!region) {
+              std::cerr << "[XDAW] ERROR: RegionFactory::create returned null" << std::endl;
+              response.error_message = "Failed to create region";
+              return response;
+            }
+            std::cerr << "[XDAW] Created region: " << region->name()
+                      << " length=" << region->length().samples() << " samples" << std::endl;
+          } catch (const std::exception& e) {
+            std::cerr << "[XDAW] EXCEPTION in region creation: " << e.what() << std::endl;
+            response.error_message =
+                std::string("Region creation failed: ") + e.what();
+            return response;
+          }
+
+        } else {
+          response.error_message = "CreateClip requires either MIDI or audio file content";
           return response;
         }
 
         // Add region to playlist at the specified position
         std::cerr << "[XDAW] Adding region to playlist at sample " << start_samples << std::endl;
         try {
-          auto position = Temporal::timepos_t(start_samples);
+          auto position = Temporal::timepos_t(start_beats);
 
           // Get region count before adding
           auto regions_before = playlist->region_list()->size();
@@ -836,13 +974,15 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           if (region_list->size() > regions_before) {
             // Find the region at our position (the one we just added)
             for (const auto& r : *region_list) {
-              if (r->position().samples() == start_samples) {
+              if (r->position().beats() == start_beats) {
                 std::cerr << "[XDAW] SUCCESS! Region in playlist, ID: " << r->id().to_s() << std::endl;
                 response.created_ids.push_back(r->id().to_s());
                 break;
               }
             }
-          } else {
+          }
+
+          if (response.created_ids.empty()) {
             // Fallback to original region ID
             std::cerr << "[XDAW] WARNING: Could not find added region, using original ID: " << region->id().to_s() << std::endl;
             response.created_ids.push_back(region->id().to_s());
