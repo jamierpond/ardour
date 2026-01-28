@@ -494,10 +494,11 @@ void
 SMFSource::_append_event_beats (const WriterLock& lock, const Evoral::Event<Temporal::Beats>& ev, bool allow_meta)
 {
 	if (!_writing || ev.size() == 0 || ev.is_realtime())  {
+		std::cerr << "SMFSource SKIP: _writing=" << _writing << " ev.size()=" << ev.size() << " is_realtime=" << ev.is_realtime() << std::endl;
 		return;
 	}
 
-#if 0
+#if 1
 	std::cerr << "SMFSource " << name() << " - append_event_beats ID = " << ev.id() << " time = " << ev.time() << " size " << ev.size() << " data: ";
 	for (size_t i = 0; i < ev.size(); ++i) std::cerr << "0x" << std::hex << (int) ev.buffer()[i];
 	std::cerr << std::dec << std::endl;

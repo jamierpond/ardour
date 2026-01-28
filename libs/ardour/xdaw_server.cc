@@ -815,24 +815,34 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             events.reserve(cmd.content.midi.notes.size() * 2);
 
             for (const auto& note : cmd.content.midi.notes) {
+              std::cerr << "[XDAW] Input note: pitch=" << note.pitch
+                        << " start=" << note.start_quarters
+                        << " len=" << note.length_quarters
+                        << " vel=" << note.velocity << std::endl;
+
               auto note_start = Temporal::Beats::from_double(note.start_quarters);
               auto note_end = Temporal::Beats::from_double(note.start_quarters + note.length_quarters);
 
               // Note-on event
-              events.push_back({
-                  note_start,
-                  {static_cast<uint8_t>(0x90),
-                   static_cast<uint8_t>(note.pitch & 0x7F),
-                   static_cast<uint8_t>(note.velocity & 0x7F)},
-                  false});
+              MidiEvent on_evt;
+              on_evt.time = note_start;
+              on_evt.data[0] = 0x90;  // Note-on, channel 0
+              on_evt.data[1] = static_cast<uint8_t>(note.pitch & 0x7F);
+              on_evt.data[2] = static_cast<uint8_t>(note.velocity & 0x7F);
+              on_evt.is_note_off = false;
+              std::cerr << "[XDAW] Created on_evt: time=" << on_evt.time
+                        << " data=" << std::hex << (int)on_evt.data[0] << " " << (int)on_evt.data[1] << " " << (int)on_evt.data[2]
+                        << std::dec << std::endl;
+              events.push_back(on_evt);
 
               // Note-off event
-              events.push_back({
-                  note_end,
-                  {static_cast<uint8_t>(0x80),
-                   static_cast<uint8_t>(note.pitch & 0x7F),
-                   static_cast<uint8_t>(0x40)},
-                  true});
+              MidiEvent off_evt;
+              off_evt.time = note_end;
+              off_evt.data[0] = 0x80;  // Note-off, channel 0
+              off_evt.data[1] = static_cast<uint8_t>(note.pitch & 0x7F);
+              off_evt.data[2] = 0x40;  // Release velocity
+              off_evt.is_note_off = true;
+              events.push_back(off_evt);
             }
 
             // Sort events by time (note-offs before note-ons at same time)
