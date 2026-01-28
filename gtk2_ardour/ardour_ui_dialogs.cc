@@ -1215,3 +1215,11 @@ ARDOUR_UI::xdaw_hide_pin_dialog ()
 		_xdaw_pin_dialog = nullptr;
 	}
 }
+
+void
+ARDOUR_UI::xdaw_request_pairing ()
+{
+	if (_xdaw_server) {
+		_xdaw_server->start_pairing_mode();
+	}
+}

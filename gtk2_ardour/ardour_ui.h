@@ -479,6 +479,7 @@ private:
 	bool xdaw_idle_handler();
 	void xdaw_show_pin_dialog(std::string pin);
 	void xdaw_hide_pin_dialog();
+	void xdaw_request_pairing();
 
 	void hide_tabbable (ArdourWidgets::Tabbable*);
 	void detach_tabbable (ArdourWidgets::Tabbable*);

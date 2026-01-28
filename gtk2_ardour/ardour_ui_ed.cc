@@ -276,6 +276,8 @@ ARDOUR_UI::install_actions ()
 	act = ActionManager::register_action (main_actions, X_("Export"), _("Export"));
 	ActionManager::session_sensitive_actions.push_back (act);
 
+	ActionManager::register_action (main_actions, X_("XDAWPairing"), _("Get XDAW Token..."), sigc::mem_fun (*this, &ARDOUR_UI::xdaw_request_pairing));
+
 	act = ActionManager::register_action (main_actions, X_("FlushWastebasket"), _("Flush Wastebasket"),  sigc::mem_fun (*(ARDOUR_UI::instance()), &ARDOUR_UI::flush_trash));
 
 	act = ActionManager::register_action (main_actions, X_("PrintKeyBindings"), _("Print Keyboard Shortcuts"),  sigc::ptr_fun (&KeyEditor::print));
