@@ -263,12 +263,12 @@ auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
           clip.id = region->id().to_s();
           clip.name = region->name();
 
-          // Convert position/length to beats
+          // Convert position/length to quarter notes
           if (tmap) {
             auto pos_beats = tmap->quarters_at(region->position());
             auto end_beats = tmap->quarters_at(region->end());
-            clip.start_beat = Temporal::DoubleableBeats(pos_beats).to_double();
-            clip.length_beats = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
+            clip.start_quarters = Temporal::DoubleableBeats(pos_beats).to_double();
+            clip.length_quarters = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
           }
 
           track.clips.push_back(clip);
@@ -311,12 +311,12 @@ auto XDAWServer::build_transport_state() -> xdaw::TransportState {
   state.is_recording = _session->actively_recording();
   state.loop_enabled = _session->get_play_loop();
 
-  // Get playhead position in beats
+  // Get playhead position in quarter notes
   auto tmap = Temporal::TempoMap::use();
   if (tmap) {
     auto pos = _session->transport_sample();
     auto beats = tmap->quarters_at(Temporal::timepos_t(pos));
-    state.position_beats = Temporal::DoubleableBeats(beats).to_double();
+    state.position_quarters = Temporal::DoubleableBeats(beats).to_double();
 
     auto tempo = tmap->tempo_at(Temporal::timepos_t());
     state.tempo = tempo.note_types_per_minute();
@@ -329,8 +329,8 @@ auto XDAWServer::build_transport_state() -> xdaw::TransportState {
       auto loop_region = xdaw::LoopRegion{};
       auto start_beats = tmap->quarters_at(loop_loc->start());
       auto end_beats = tmap->quarters_at(loop_loc->end());
-      loop_region.start_beat = Temporal::DoubleableBeats(start_beats).to_double();
-      loop_region.length_beats = Temporal::DoubleableBeats(end_beats - start_beats).to_double();
+      loop_region.start_quarters = Temporal::DoubleableBeats(start_beats).to_double();
+      loop_region.length_quarters = Temporal::DoubleableBeats(end_beats - start_beats).to_double();
       state.loop_region = loop_region;
     }
   }
@@ -382,8 +382,8 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
         if (tmap) {
           auto pos_beats = tmap->quarters_at(region->position());
           auto end_beats = tmap->quarters_at(region->end());
-          clip.start_beat = Temporal::DoubleableBeats(pos_beats).to_double();
-          clip.length_beats = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
+          clip.start_quarters = Temporal::DoubleableBeats(pos_beats).to_double();
+          clip.length_quarters = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
         }
 
         track.clips.push_back(clip);
@@ -672,7 +672,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             // Toggle record enable
             // TODO: Implement record arm
             break;
-          case xdaw::TransportActionType::JumpToBeat: {
+          case xdaw::TransportActionType::JumpToQuarters: {
             auto tmap = Temporal::TempoMap::use();
             if (tmap) {
               auto beats = Temporal::Beats::from_double(action.double_value);
@@ -780,14 +780,14 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
         std::cerr << "[XDAW] Created " << sources.size() << " sources" << std::endl;
 
-        // Convert beat position to samples
+        // Convert quarter note position to samples
         auto tmap = Temporal::TempoMap::use();
         if (!tmap) {
           response.error_message = "No tempo map available";
           return response;
         }
 
-        auto start_beats = Temporal::Beats::from_double(cmd.start_beat);
+        auto start_beats = Temporal::Beats::from_double(cmd.start_quarters);
         auto start_samples = tmap->sample_at(start_beats);
 
         // Create a "whole file" region from the sources
@@ -877,7 +877,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         const auto& cmd = op.move_clip;
         std::cerr << "[XDAW] MoveClip: clip_id=" << cmd.clip_id
                   << " target_track=" << cmd.target_track_id
-                  << " new_start_beat=" << cmd.new_start_beat << std::endl;
+                  << " new_start_quarters=" << cmd.new_start_quarters << std::endl;
 
         auto region = RegionFactory::region_by_id(PBD::ID(cmd.clip_id));
         if (!region) {
@@ -891,7 +891,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           return response;
         }
 
-        auto new_beats = Temporal::Beats::from_double(cmd.new_start_beat);
+        auto new_beats = Temporal::Beats::from_double(cmd.new_start_quarters);
         auto new_samples = tmap->sample_at(new_beats);
         auto new_pos = Temporal::timepos_t(new_samples);
 
@@ -915,7 +915,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
 
         // Simple move (same track)
         region->set_position(new_pos);
-        std::cerr << "[XDAW] Clip moved to beat " << cmd.new_start_beat << std::endl;
+        std::cerr << "[XDAW] Clip moved to quarter " << cmd.new_start_quarters << std::endl;
         break;
       }
 
@@ -936,23 +936,23 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
 
         // Change start position (trim head)
-        if (cmd.new_start_beat.has_value()) {
-          auto beats = Temporal::Beats::from_double(*cmd.new_start_beat);
+        if (cmd.new_start_quarters.has_value()) {
+          auto beats = Temporal::Beats::from_double(*cmd.new_start_quarters);
           auto new_pos = Temporal::timepos_t(tmap->sample_at(beats));
           region->set_position(new_pos);
-          std::cerr << "[XDAW] Clip start set to beat " << *cmd.new_start_beat << std::endl;
+          std::cerr << "[XDAW] Clip start set to quarter " << *cmd.new_start_quarters << std::endl;
         }
 
         // Change length (trim tail)
-        if (cmd.new_length_beats.has_value()) {
+        if (cmd.new_length_quarters.has_value()) {
           auto start_beats = tmap->quarters_at(region->position());
-          auto end_beats = start_beats + Temporal::Beats::from_double(*cmd.new_length_beats);
+          auto end_beats = start_beats + Temporal::Beats::from_double(*cmd.new_length_quarters);
 
           auto start_samples = region->position().samples();
           auto end_samples = tmap->sample_at(end_beats);
 
           region->set_length(Temporal::timecnt_t(end_samples - start_samples));
-          std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_beats << " beats" << std::endl;
+          std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_quarters << " quarters" << std::endl;
         }
         break;
       }
@@ -1279,8 +1279,8 @@ auto XDAWServer::start_render(const xdaw::RenderRequest& req)
       std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
 
   std::cerr << "[XDAW] start_render called: op_id=" << result.operation_id
-            << " start_beat=" << req.start_beat
-            << " length_beats=" << req.length_beats << std::endl;
+            << " start_quarters=" << req.start_quarters
+            << " length_quarters=" << req.length_quarters << std::endl;
 
   if (!_session) {
     std::cerr << "[XDAW] ERROR: No session!" << std::endl;
@@ -1296,7 +1296,7 @@ auto XDAWServer::start_render(const xdaw::RenderRequest& req)
     return result;
   }
 
-  // Convert beats to samples
+  // Convert quarter notes to samples
   auto tmap = Temporal::TempoMap::use();
   if (!tmap) {
     std::cerr << "[XDAW] ERROR: No tempo map!" << std::endl;
@@ -1304,9 +1304,9 @@ auto XDAWServer::start_render(const xdaw::RenderRequest& req)
     return result;
   }
 
-  auto start_beats = Temporal::Beats::from_double(req.start_beat);
+  auto start_beats = Temporal::Beats::from_double(req.start_quarters);
   auto end_beats =
-      Temporal::Beats::from_double(req.start_beat + req.length_beats);
+      Temporal::Beats::from_double(req.start_quarters + req.length_quarters);
   auto start_samples = tmap->sample_at(start_beats);
   auto end_samples = tmap->sample_at(end_beats);
 
