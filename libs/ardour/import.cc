@@ -399,6 +399,8 @@ write_midi_type0_data_to_one_file (Evoral::SMF* source, ImportStatus& status, si
 				break;
 			}
 
+			t += delta_t;
+
 			if (size == 0) {
 				/* metadata not meant for us */
 				continue;
@@ -412,8 +414,6 @@ write_midi_type0_data_to_one_file (Evoral::SMF* source, ImportStatus& status, si
 			if (size > bufsize) {
 				bufsize = size;
 			}
-
-			t += delta_t;
 
 			/* if requested by user, each sourcefile gets only a single channel's data */
 
@@ -447,6 +447,7 @@ write_midi_type0_data_to_one_file (Evoral::SMF* source, ImportStatus& status, si
 			/* we wrote something */
 
 			smfs->mark_streaming_write_completed (target_lock, timecnt_t (source->duration()));
+			smfs->round_length_to_bars (t);
 
 			/* the streaming write that we've just finished
 			 * only wrote data to the SMF object, which is
@@ -670,6 +671,7 @@ write_midi_type1_data_to_one_file (Evoral::SMF* source, ImportStatus& status, st
 		}
 
 		smfs->mark_streaming_write_completed (target_lock, timecnt_t (Temporal::Beats::ticks_at_rate (our_t, source->ppqn())));
+		smfs->round_length_to_bars (our_t);
 
 		if (written) {
 
