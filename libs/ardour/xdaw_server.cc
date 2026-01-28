@@ -1012,7 +1012,13 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           // Get region count before adding
           auto regions_before = playlist->region_list()->size();
 
+          // Capture state BEFORE change for undo
+          playlist->clear_changes();
+
           playlist->add_region(region, position, 1.0f, false);
+
+          // Record the diff for undo
+          playlist->rdiff_and_add_command(_session);
 
           // Find the newly added region by checking what's new in the playlist
           auto region_list = playlist->region_list();
@@ -1054,7 +1060,10 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           response.error_message = "Clip not in any playlist: " + cmd.clip_id;
           return response;
         }
+        // Capture state for undo
+        playlist->clear_changes();
         playlist->remove_region(region);
+        playlist->rdiff_and_add_command(_session);
         break;
       }
 
@@ -1088,18 +1097,36 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           if (new_route && current_playlist) {
             auto new_track = std::dynamic_pointer_cast<Track>(new_route);
             if (new_track && new_track->playlist() != current_playlist) {
+              auto new_playlist = new_track->playlist();
+
+              // Capture state for undo on both playlists
+              current_playlist->clear_changes();
+              new_playlist->clear_changes();
+
               // Remove from old playlist
               current_playlist->remove_region(region);
               // Add to new playlist at new position
-              new_track->playlist()->add_region(region, new_pos, 1.0f, false);
+              new_playlist->add_region(region, new_pos, 1.0f, false);
+
+              // Record diffs for both playlists
+              current_playlist->rdiff_and_add_command(_session);
+              new_playlist->rdiff_and_add_command(_session);
+
               std::cerr << "[XDAW] Clip moved to track " << cmd.target_track_id << std::endl;
               break;
             }
           }
         }
 
-        // Simple move (same track)
-        region->set_position(new_pos);
+        // Simple move (same track) - capture region state
+        auto playlist = region->playlist();
+        if (playlist) {
+          playlist->clear_changes();
+          region->set_position(new_pos);
+          playlist->rdiff_and_add_command(_session);
+        } else {
+          region->set_position(new_pos);
+        }
         std::cerr << "[XDAW] Clip moved to quarter " << cmd.new_start_quarters << std::endl;
         break;
       }
@@ -1120,6 +1147,12 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           return response;
         }
 
+        // Capture state for undo
+        auto playlist = region->playlist();
+        if (playlist) {
+          playlist->clear_changes();
+        }
+
         // Change start position (trim head)
         if (cmd.new_start_quarters.has_value()) {
           auto beats = Temporal::Beats::from_double(*cmd.new_start_quarters);
@@ -1138,6 +1171,11 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
 
           region->set_length(Temporal::timecnt_t(end_samples - start_samples));
           std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_quarters << " quarters" << std::endl;
+        }
+
+        // Record the diff for undo
+        if (playlist) {
+          playlist->rdiff_and_add_command(_session);
         }
         break;
       }
