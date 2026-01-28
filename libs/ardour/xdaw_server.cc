@@ -539,6 +539,28 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
     return response;
   }
 
+  // Begin undo group - all operations in this batch will be undoable as one step
+  auto undo_name = batch.undo_step_name.empty() ? "XDAW Edit" : batch.undo_step_name;
+  _session->begin_reversible_command(undo_name);
+
+  // RAII guard to ensure we abort the undo command if we return early due to error
+  struct UndoGuard {
+    Session* session;
+    bool committed = false;
+    ~UndoGuard() {
+      if (!committed && session) {
+        session->abort_reversible_command();
+      }
+    }
+    void commit() {
+      if (session) {
+        session->commit_reversible_command();
+        committed = true;
+      }
+    }
+  };
+  auto undo_guard = UndoGuard{_session};
+
   for (const auto& op : batch.operations) {
     switch (op.type) {
       case xdaw::EditOperationType::CreateTrack: {
@@ -1389,6 +1411,8 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
     }
   }
 
+  // Commit the undo group - all operations succeeded
+  undo_guard.commit();
   response.success = true;
   return response;
 }
