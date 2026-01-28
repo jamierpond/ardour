@@ -559,6 +559,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             response.created_ids.push_back(t->id().to_s());
           }
         } else if (cmd.type == xdaw::TrackType::Midi) {
+          std::cerr << "[XDAW] Creating MIDI track: " << cmd.name << std::endl;
           auto tracks = _session->new_midi_track(
               ChanCount(DataType::MIDI, 1),
               ChanCount(DataType::MIDI, 1),
@@ -571,7 +572,9 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
               PresentationInfo::max_order,
               Normal,
               true); // input_auto_connect
+          std::cerr << "[XDAW] new_midi_track returned " << tracks.size() << " tracks" << std::endl;
           for (const auto& t : tracks) {
+            std::cerr << "[XDAW] Created MIDI track ID: " << t->id().to_s() << std::endl;
             response.created_ids.push_back(t->id().to_s());
           }
         } else {
