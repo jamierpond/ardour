@@ -842,9 +842,10 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             });
 
             // Write sorted events
+            constexpr auto kOwnsBuffer = true;
             for (const auto& evt : events) {
               Evoral::Event<Temporal::Beats> event(
-                  Evoral::MIDI_EVENT, evt.time, 3, const_cast<uint8_t*>(evt.data), false);
+                  Evoral::MIDI_EVENT, evt.time, 3, const_cast<uint8_t*>(evt.data), kOwnsBuffer);
               midi_source->append_event_beats(lck, event);
             }
 
