@@ -543,23 +543,48 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
   auto undo_name = batch.undo_step_name.empty() ? "XDAW Edit" : batch.undo_step_name;
   _session->begin_reversible_command(undo_name);
 
-  // RAII guard to ensure we abort the undo command if we return early due to error
+  // RAII guard to ensure proper undo handling
+  // - On error (early return): abort the command
+  // - On success: commit if there were changes, otherwise abort empty command
   struct UndoGuard {
     Session* session;
-    bool committed = false;
+    bool finished = false;
     ~UndoGuard() {
-      if (!committed && session) {
+      if (!finished && session) {
         session->abort_reversible_command();
       }
     }
-    void commit() {
-      if (session) {
-        session->commit_reversible_command();
-        committed = true;
+    void finish() {
+      if (session && !finished) {
+        // Only commit if there were actual undoable changes, otherwise abort
+        if (session->collected_undo_commands()) {
+          session->commit_reversible_command();
+        } else {
+          session->abort_reversible_command();
+        }
+        finished = true;
       }
     }
   };
   auto undo_guard = UndoGuard{_session};
+
+  // Helper to record undoable playlist changes
+  // Usage: auto change = playlist_change(playlist); ... modify playlist ...
+  auto playlist_change = [this](std::shared_ptr<Playlist> pl) {
+    struct PlaylistChange {
+      std::shared_ptr<Playlist> playlist;
+      Session* session;
+      ~PlaylistChange() {
+        if (playlist && session) {
+          playlist->rdiff_and_add_command(session);
+        }
+      }
+    };
+    if (pl) {
+      pl->clear_changes();
+    }
+    return PlaylistChange{pl, _session};
+  };
 
   for (const auto& op : batch.operations) {
     switch (op.type) {
@@ -1012,13 +1037,10 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           // Get region count before adding
           auto regions_before = playlist->region_list()->size();
 
-          // Capture state BEFORE change for undo
-          playlist->clear_changes();
+          // RAII helper captures state before and records diff after
+          auto change = playlist_change(playlist);
 
           playlist->add_region(region, position, 1.0f, false);
-
-          // Record the diff for undo
-          playlist->rdiff_and_add_command(_session);
 
           // Find the newly added region by checking what's new in the playlist
           auto region_list = playlist->region_list();
@@ -1060,10 +1082,8 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           response.error_message = "Clip not in any playlist: " + cmd.clip_id;
           return response;
         }
-        // Capture state for undo
-        playlist->clear_changes();
+        auto change = playlist_change(playlist);
         playlist->remove_region(region);
-        playlist->rdiff_and_add_command(_session);
         break;
       }
 
@@ -1100,17 +1120,12 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
               auto new_playlist = new_track->playlist();
 
               // Capture state for undo on both playlists
-              current_playlist->clear_changes();
-              new_playlist->clear_changes();
+              auto change_old = playlist_change(current_playlist);
+              auto change_new = playlist_change(new_playlist);
 
-              // Remove from old playlist
+              // Remove from old playlist, add to new
               current_playlist->remove_region(region);
-              // Add to new playlist at new position
               new_playlist->add_region(region, new_pos, 1.0f, false);
-
-              // Record diffs for both playlists
-              current_playlist->rdiff_and_add_command(_session);
-              new_playlist->rdiff_and_add_command(_session);
 
               std::cerr << "[XDAW] Clip moved to track " << cmd.target_track_id << std::endl;
               break;
@@ -1118,12 +1133,10 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           }
         }
 
-        // Simple move (same track) - capture region state
-        auto playlist = region->playlist();
-        if (playlist) {
-          playlist->clear_changes();
+        // Simple move (same track)
+        if (auto playlist = region->playlist()) {
+          auto change = playlist_change(playlist);
           region->set_position(new_pos);
-          playlist->rdiff_and_add_command(_session);
         } else {
           region->set_position(new_pos);
         }
@@ -1147,35 +1160,29 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           return response;
         }
 
-        // Capture state for undo
-        auto playlist = region->playlist();
-        if (playlist) {
-          playlist->clear_changes();
-        }
+        {
+          // RAII scope for undo - records diff when change goes out of scope
+          auto change = playlist_change(region->playlist());
 
-        // Change start position (trim head)
-        if (cmd.new_start_quarters.has_value()) {
-          auto beats = Temporal::Beats::from_double(*cmd.new_start_quarters);
-          auto new_pos = Temporal::timepos_t(tmap->sample_at(beats));
-          region->set_position(new_pos);
-          std::cerr << "[XDAW] Clip start set to quarter " << *cmd.new_start_quarters << std::endl;
-        }
+          // Change start position (trim head)
+          if (cmd.new_start_quarters.has_value()) {
+            auto beats = Temporal::Beats::from_double(*cmd.new_start_quarters);
+            auto new_pos = Temporal::timepos_t(tmap->sample_at(beats));
+            region->set_position(new_pos);
+            std::cerr << "[XDAW] Clip start set to quarter " << *cmd.new_start_quarters << std::endl;
+          }
 
-        // Change length (trim tail)
-        if (cmd.new_length_quarters.has_value()) {
-          auto start_beats = tmap->quarters_at(region->position());
-          auto end_beats = start_beats + Temporal::Beats::from_double(*cmd.new_length_quarters);
+          // Change length (trim tail)
+          if (cmd.new_length_quarters.has_value()) {
+            auto start_beats = tmap->quarters_at(region->position());
+            auto end_beats = start_beats + Temporal::Beats::from_double(*cmd.new_length_quarters);
 
-          auto start_samples = region->position().samples();
-          auto end_samples = tmap->sample_at(end_beats);
+            auto start_samples = region->position().samples();
+            auto end_samples = tmap->sample_at(end_beats);
 
-          region->set_length(Temporal::timecnt_t(end_samples - start_samples));
-          std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_quarters << " quarters" << std::endl;
-        }
-
-        // Record the diff for undo
-        if (playlist) {
-          playlist->rdiff_and_add_command(_session);
+            region->set_length(Temporal::timecnt_t(end_samples - start_samples));
+            std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_quarters << " quarters" << std::endl;
+          }
         }
         break;
       }
@@ -1449,8 +1456,8 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
     }
   }
 
-  // Commit the undo group - all operations succeeded
-  undo_guard.commit();
+  // Finish the undo group - commits if there were changes, aborts if empty
+  undo_guard.finish();
   response.success = true;
   return response;
 }
