@@ -1128,6 +1128,21 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             std::cerr << "[XDAW] WARNING: Could not find added region, using original ID: " << region->id().to_s() << std::endl;
             response.created_ids.push_back(region->id().to_s());
           }
+
+          // Emit ClipChanged notification for the new clip
+          auto clip_notification = xdaw::ClipChanged{};
+          clip_notification.clip_id = response.created_ids.back();
+          clip_notification.change_type = xdaw::ClipChangeType::Added;
+          clip_notification.track_id = cmd.track_id;
+          // Populate clip data
+          auto clip_data = xdaw::Clip{};
+          clip_data.id = clip_notification.clip_id;
+          clip_data.name = cmd.name;
+          clip_data.start_quarters = cmd.start_quarters;
+          clip_data.length_quarters = cmd.length_quarters > 0 ? cmd.length_quarters : region->length().samples() / static_cast<double>(_session->sample_rate()) * (tmap->tempo_at(Temporal::timepos_t()).note_types_per_minute() / 60.0);
+          clip_notification.clip = clip_data;
+          server_->push_notification(xdaw::Notification::make_clip_changed(clip_notification));
+
         } catch (const std::exception& e) {
           std::cerr << "[XDAW] EXCEPTION adding to playlist: " << e.what() << std::endl;
           response.error_message =
@@ -1150,8 +1165,29 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           response.error_message = "Clip not in any playlist: " + cmd.clip_id;
           return response;
         }
+
+        // Find the track ID before removing
+        std::string track_id;
+        auto routes = _session->get_routes();
+        for (const auto& route : *routes) {
+          if (auto ardour_track = std::dynamic_pointer_cast<Track>(route)) {
+            if (ardour_track->playlist() == playlist) {
+              track_id = route->id().to_s();
+              break;
+            }
+          }
+        }
+
         auto change = playlist_change(playlist);
         playlist->remove_region(region);
+
+        // Emit ClipChanged notification
+        auto clip_notification = xdaw::ClipChanged{};
+        clip_notification.clip_id = cmd.clip_id;
+        clip_notification.change_type = xdaw::ClipChangeType::Removed;
+        clip_notification.track_id = track_id;
+        server_->push_notification(xdaw::Notification::make_clip_changed(clip_notification));
+
         break;
       }
 
@@ -1177,10 +1213,24 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         auto new_samples = tmap->sample_at(new_beats);
         auto new_pos = Temporal::timepos_t(new_samples);
 
+        // Find current track ID
+        std::string from_track_id;
+        auto current_playlist = region->playlist();
+        if (current_playlist) {
+          auto routes = _session->get_routes();
+          for (const auto& route : *routes) {
+            if (auto ardour_track = std::dynamic_pointer_cast<Track>(route)) {
+              if (ardour_track->playlist() == current_playlist) {
+                from_track_id = route->id().to_s();
+                break;
+              }
+            }
+          }
+        }
+
         // Handle track change if target_track_id is provided
         if (!cmd.target_track_id.empty()) {
           auto new_route = _session->route_by_id(PBD::ID(cmd.target_track_id));
-          auto current_playlist = region->playlist();
 
           if (new_route && current_playlist) {
             auto new_track = std::dynamic_pointer_cast<Track>(new_route);
@@ -1196,6 +1246,15 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
               new_playlist->add_region(region, new_pos, 1.0f, false);
 
               std::cerr << "[XDAW] Clip moved to track " << cmd.target_track_id << std::endl;
+
+              // Emit ClipChanged notification for cross-track move
+              auto clip_notification = xdaw::ClipChanged{};
+              clip_notification.clip_id = cmd.clip_id;
+              clip_notification.change_type = xdaw::ClipChangeType::Moved;
+              clip_notification.track_id = cmd.target_track_id;
+              clip_notification.from_track_id = from_track_id;
+              server_->push_notification(xdaw::Notification::make_clip_changed(clip_notification));
+
               break;
             }
           }
@@ -1209,6 +1268,14 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           region->set_position(new_pos);
         }
         std::cerr << "[XDAW] Clip moved to quarter " << cmd.new_start_quarters << std::endl;
+
+        // Emit ClipChanged notification for same-track move
+        auto clip_notification = xdaw::ClipChanged{};
+        clip_notification.clip_id = cmd.clip_id;
+        clip_notification.change_type = xdaw::ClipChangeType::Modified;
+        clip_notification.track_id = from_track_id;
+        server_->push_notification(xdaw::Notification::make_clip_changed(clip_notification));
+
         break;
       }
 
@@ -1226,6 +1293,21 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         if (!tmap) {
           response.error_message = "No tempo map available";
           return response;
+        }
+
+        // Find track ID
+        std::string track_id;
+        auto playlist = region->playlist();
+        if (playlist) {
+          auto routes = _session->get_routes();
+          for (const auto& route : *routes) {
+            if (auto ardour_track = std::dynamic_pointer_cast<Track>(route)) {
+              if (ardour_track->playlist() == playlist) {
+                track_id = route->id().to_s();
+                break;
+              }
+            }
+          }
         }
 
         {
@@ -1252,6 +1334,14 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             std::cerr << "[XDAW] Clip length set to " << *cmd.new_length_quarters << " quarters" << std::endl;
           }
         }
+
+        // Emit ClipChanged notification
+        auto clip_notification = xdaw::ClipChanged{};
+        clip_notification.clip_id = cmd.clip_id;
+        clip_notification.change_type = xdaw::ClipChangeType::Modified;
+        clip_notification.track_id = track_id;
+        server_->push_notification(xdaw::Notification::make_clip_changed(clip_notification));
+
         break;
       }
 
