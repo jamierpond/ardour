@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -46,7 +47,9 @@ struct PluginsResponse;
 
 namespace ARDOUR {
 
+class Route;
 class Session;
+typedef std::list<std::shared_ptr<Route>> RouteList;
 
 /**
  * XDAWServer provides a gRPC interface for remote control of Ardour.
@@ -124,9 +127,25 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
   // Called periodically to check for completed renders and send notifications
   auto check_pending_renders() -> void;
 
+  // Subscribe to session/route signals for push notifications
+  auto subscribe_to_session_signals() -> void;
+  auto subscribe_to_route_signals(std::shared_ptr<ARDOUR::Route> route) -> void;
+  auto unsubscribe_all() -> void;
+
+  // Signal handlers
+  auto on_routes_added(ARDOUR::RouteList& routes) -> void;
+  auto on_mixer_control_changed(std::shared_ptr<ARDOUR::Route> route,
+                                 const std::string& track_id,
+                                 const std::string& control_name,
+                                 double value) -> void;
+
   std::unique_ptr<xdaw::Server> server_;
   std::atomic<bool> tasks_pending_{false};
   std::atomic<bool> applying_edits_{false};  // Reentrancy guard for apply_edits
+
+  // Signal connections - cleared when session changes
+  PBD::ScopedConnectionList session_connections_;
+  std::map<PBD::ID, PBD::ScopedConnectionList> route_connections_;
 
   // Track pending render operations
   struct PendingRender {

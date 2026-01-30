@@ -86,7 +86,14 @@ XDAWServer::XDAWServer(std::int32_t port)
 XDAWServer::~XDAWServer() { stop(); }
 
 auto XDAWServer::set_session(Session* s) -> void {
+  // Clear existing connections before changing session
+  unsubscribe_all();
+
   SessionHandlePtr::set_session(s);
+
+  if (_session) {
+    subscribe_to_session_signals();
+  }
 }
 
 auto XDAWServer::setup_handlers() -> void {
@@ -1775,6 +1782,127 @@ auto XDAWServer::check_pending_renders() -> void {
 
   status->finish(TRS_UI);
   pending_renders_.clear();
+}
+
+auto XDAWServer::unsubscribe_all() -> void {
+  session_connections_.drop_connections();
+  route_connections_.clear();
+}
+
+auto XDAWServer::subscribe_to_session_signals() -> void {
+  if (!_session) return;
+
+  // Subscribe to new routes being added
+  _session->RouteAdded.connect(session_connections_,
+      MISSING_INVALIDATOR,
+      [this](RouteList& routes) { on_routes_added(routes); },
+      nullptr);  // NULL = call from any thread, we'll handle thread safety
+
+  // Subscribe to existing routes
+  auto routes = _session->get_routes();
+  for (const auto& route : *routes) {
+    if (!route->is_auditioner() && !route->is_monitor()) {
+      subscribe_to_route_signals(route);
+    }
+  }
+
+  std::cerr << "[XDAW] Subscribed to session signals, "
+            << route_connections_.size() << " routes" << std::endl;
+}
+
+auto XDAWServer::on_routes_added(RouteList& routes) -> void {
+  for (const auto& route : routes) {
+    if (!route->is_auditioner() && !route->is_monitor()) {
+      subscribe_to_route_signals(route);
+    }
+  }
+}
+
+auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> void {
+  auto route_id = route->id();
+  auto& connections = route_connections_[route_id];
+
+  // Capture route_id by value for the lambdas
+  auto track_id = route_id.to_s();
+
+  // Gain (volume) control
+  if (auto gain_ctrl = route->gain_control()) {
+    gain_ctrl->Changed.connect(connections,
+        MISSING_INVALIDATOR,
+        [this, track_id, gain_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
+          auto coef = static_cast<float>(gain_ctrl->get_value());
+          auto db = (coef > 0.0f) ? 20.0 * std::log10(coef)
+                                   : -std::numeric_limits<double>::infinity();
+          on_mixer_control_changed(nullptr, track_id, "volume", db);
+        },
+        nullptr);
+  }
+
+  // Pan (azimuth) control
+  if (auto pan_ctrl = route->pan_azimuth_control()) {
+    pan_ctrl->Changed.connect(connections,
+        MISSING_INVALIDATOR,
+        [this, track_id, pan_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
+          auto azimuth = pan_ctrl->get_value();  // 0 to 1
+          auto pan = (azimuth - 0.5) * 2.0;      // -1 to +1
+          on_mixer_control_changed(nullptr, track_id, "pan", pan);
+        },
+        nullptr);
+  }
+
+  // Mute control
+  if (auto mute_ctrl = route->mute_control()) {
+    mute_ctrl->Changed.connect(connections,
+        MISSING_INVALIDATOR,
+        [this, track_id, mute_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
+          on_mixer_control_changed(nullptr, track_id, "muted", mute_ctrl->muted() ? 1.0 : 0.0);
+        },
+        nullptr);
+  }
+
+  // Solo control
+  if (auto solo_ctrl = route->solo_control()) {
+    solo_ctrl->Changed.connect(connections,
+        MISSING_INVALIDATOR,
+        [this, track_id, solo_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
+          on_mixer_control_changed(nullptr, track_id, "soloed", solo_ctrl->soloed() ? 1.0 : 0.0);
+        },
+        nullptr);
+  }
+
+  // Record arm (only for tracks, not busses)
+  if (auto track = std::dynamic_pointer_cast<Track>(route)) {
+    if (auto rec_ctrl = track->rec_enable_control()) {
+      rec_ctrl->Changed.connect(connections,
+          MISSING_INVALIDATOR,
+          [this, track_id, rec_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
+            on_mixer_control_changed(nullptr, track_id, "armed", rec_ctrl->get_value() > 0.5 ? 1.0 : 0.0);
+          },
+          nullptr);
+    }
+  }
+}
+
+auto XDAWServer::on_mixer_control_changed(std::shared_ptr<Route> /* route */,
+                                           const std::string& track_id,
+                                           const std::string& control_name,
+                                           double value) -> void {
+  auto notification = xdaw::TrackChanged{};
+  notification.track_id = track_id;
+
+  if (control_name == "volume") {
+    notification.volume = value;
+  } else if (control_name == "pan") {
+    notification.pan = value;
+  } else if (control_name == "muted") {
+    notification.muted = (value > 0.5);
+  } else if (control_name == "soloed") {
+    notification.soloed = (value > 0.5);
+  } else if (control_name == "armed") {
+    notification.armed = (value > 0.5);
+  }
+
+  server_->push_notification(xdaw::Notification::make_track_changed(notification));
 }
 
 }  // namespace ARDOUR
