@@ -1388,13 +1388,15 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
                   << " param_id=" << cmd.param_id
                   << " value=" << cmd.value << std::endl;
 
-        // Find the processor across all routes
+        // Find the processor across all routes, also capturing the route
         std::shared_ptr<PluginInsert> found_insert;
+        std::shared_ptr<Route> found_route;
         auto routes = _session->get_routes();
         for (const auto& route : *routes) {
           auto processor = route->processor_by_id(PBD::ID(cmd.device_id));
           if (auto pi = std::dynamic_pointer_cast<PluginInsert>(processor)) {
             found_insert = pi;
+            found_route = route;
             break;
           }
         }
@@ -1414,6 +1416,16 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
         ctrl->set_value(cmd.value, PBD::Controllable::NoGroup);
         std::cerr << "[XDAW] Parameter set: " << cmd.param_id << " = " << cmd.value << std::endl;
+
+        // Send notification with the new value
+        auto notification = xdaw::DeviceParameterChanged{};
+        notification.track_id = found_route->id().to_s();
+        notification.device_id = cmd.device_id;
+        notification.param_id = cmd.param_id;
+        notification.value = cmd.value;
+        notification.display_value = std::to_string(cmd.value);
+        server_->push_notification(xdaw::Notification::make_device_parameter_changed(notification));
+
         break;
       }
 
