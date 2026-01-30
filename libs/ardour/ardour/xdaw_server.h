@@ -29,6 +29,7 @@
 
 #include "ardour/libardour_visibility.h"
 #include "ardour/session_handle.h"
+#include "ardour/types.h"
 
 // TODO CLAUDE THIS IS A FUCKING EMBARRASSMENT FIX IT
 // THIS SHOULD BE DONE IN THE SDK NOT BY THE CONSUMER OF THE SDK
@@ -142,6 +143,8 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
                                  const std::string& track_id,
                                  const std::string& control_name,
                                  double value) -> void;
+  auto on_transport_state_changed() -> void;
+  auto on_position_changed(samplepos_t position) -> void;
 
   std::unique_ptr<xdaw::Server> server_;
   std::atomic<bool> tasks_pending_{false};

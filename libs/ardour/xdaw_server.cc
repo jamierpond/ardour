@@ -223,6 +223,58 @@ static auto ardour_to_xdaw_plugin_format(PluginType type) -> xdaw::PluginFormat 
   }
 }
 
+// Helper to populate devices (plugins) from a route
+static auto populate_devices(std::shared_ptr<Route> route,
+                              std::vector<xdaw::Device>& devices) -> void {
+  route->foreach_processor([&devices](std::weak_ptr<Processor> wp) {
+    auto proc = wp.lock();
+    if (!proc) return;
+
+    auto pi = std::dynamic_pointer_cast<PluginInsert>(proc);
+    if (!pi) return;
+
+    auto device = xdaw::Device{};
+    device.id = pi->id().to_s();
+    device.name = pi->name();
+    device.is_enabled = pi->enabled();
+
+    auto plugin = pi->plugin();
+    if (!plugin) {
+      devices.push_back(device);
+      return;
+    }
+
+    auto info = plugin->get_info();
+    device.plugin_id = info->unique_id;
+    device.format = ardour_to_xdaw_plugin_format(info->type);
+
+    // Populate parameters
+    auto param_count = plugin->parameter_count();
+    for (uint32_t i = 0; i < param_count; ++i) {
+      auto ok = false;
+      auto param_idx = plugin->nth_parameter(i, ok);
+      if (!ok) continue;
+
+      ParameterDescriptor desc;
+      if (plugin->get_parameter_descriptor(param_idx, desc) != 0) {
+        continue;
+      }
+
+      auto param = xdaw::DeviceParameter{};
+      param.id = std::to_string(param_idx);
+      param.name = desc.label.empty() ? ("Param " + std::to_string(param_idx)) : desc.label;
+      param.value = plugin->get_parameter(param_idx);
+      param.min_value = desc.lower;
+      param.max_value = desc.upper;
+      param.display_value = std::to_string(param.value);
+
+      device.parameters.push_back(param);
+    }
+
+    devices.push_back(device);
+  });
+}
+
 static auto xdaw_to_ardour_plugin_type(xdaw::PluginFormat format) -> PluginType {
   switch (format) {
     case xdaw::PluginFormat::AU:
@@ -242,7 +294,7 @@ static auto xdaw_to_ardour_plugin_type(xdaw::PluginFormat format) -> PluginType 
   }
 }
 
-auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
+auto XDAWServer::build_session_state(const xdaw::SessionRequest& req)
     -> xdaw::SessionState {
   auto state = xdaw::SessionState{};
 
@@ -296,28 +348,35 @@ auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
 
     // Get regions (clips) from track's playlist
     if (auto ardour_track = std::dynamic_pointer_cast<Track>(route)) {
-      if (auto playlist = ardour_track->playlist()) {
-        auto region_list = playlist->region_list();
-        for (const auto& region : *region_list) {
-          auto clip = xdaw::Clip{};
-          clip.id = region->id().to_s();
-          clip.name = region->name();
+      if (req.include_clips) {
+        if (auto playlist = ardour_track->playlist()) {
+          auto region_list = playlist->region_list();
+          for (const auto& region : *region_list) {
+            auto clip = xdaw::Clip{};
+            clip.id = region->id().to_s();
+            clip.name = region->name();
 
-          // Convert position/length to quarter notes
-          if (tmap) {
-            auto pos_beats = tmap->quarters_at(region->position());
-            auto end_beats = tmap->quarters_at(region->end());
-            clip.start_quarters = Temporal::DoubleableBeats(pos_beats).to_double();
-            clip.length_quarters = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
+            // Convert position/length to quarter notes
+            if (tmap) {
+              auto pos_beats = tmap->quarters_at(region->position());
+              auto end_beats = tmap->quarters_at(region->end());
+              clip.start_quarters = Temporal::DoubleableBeats(pos_beats).to_double();
+              clip.length_quarters = Temporal::DoubleableBeats(end_beats - pos_beats).to_double();
+            }
+
+            track.clips.push_back(clip);
           }
-
-          track.clips.push_back(clip);
         }
       }
 
       // Check if track is armed for recording
       track.armed = ardour_track->rec_enable_control() &&
                     ardour_track->rec_enable_control()->get_value();
+    }
+
+    // Get devices (plugins) if requested
+    if (req.include_devices) {
+      populate_devices(route, track.devices);
     }
 
     // Handle master track separately
@@ -329,6 +388,10 @@ auto XDAWServer::build_session_state(const xdaw::SessionRequest& /* req */)
         if (coef > 0.0f) {
           master.volume = 20.0 * std::log10(coef);
         }
+      }
+      // Get devices on master if requested
+      if (req.include_devices) {
+        populate_devices(route, master.devices);
       }
       state.master_track = master;
     } else {
@@ -435,48 +498,7 @@ auto XDAWServer::get_track_detail(const std::string& track_id) -> xdaw::Track {
   }
 
   // Get devices (plugins)
-  route->foreach_processor([&track](std::weak_ptr<Processor> wp) {
-    if (auto proc = wp.lock()) {
-      if (auto pi = std::dynamic_pointer_cast<PluginInsert>(proc)) {
-        auto device = xdaw::Device{};
-        device.id = pi->id().to_s();
-        device.name = pi->name();
-        device.is_enabled = pi->enabled();
-
-        if (auto plugin = pi->plugin()) {
-          auto info = plugin->get_info();
-          device.plugin_id = info->unique_id;
-          device.format = ardour_to_xdaw_plugin_format(info->type);
-
-          // Populate parameters
-          auto param_count = plugin->parameter_count();
-          for (uint32_t i = 0; i < param_count; ++i) {
-            bool ok = false;
-            auto param_idx = plugin->nth_parameter(i, ok);
-            if (!ok) continue;
-
-            ParameterDescriptor desc;
-            if (plugin->get_parameter_descriptor(param_idx, desc) != 0) {
-              continue;
-            }
-
-            auto param = xdaw::DeviceParameter{};
-            param.id = std::to_string(param_idx);
-            param.name = desc.label.empty() ? ("Param " + std::to_string(param_idx)) : desc.label;
-            param.value = plugin->get_parameter(param_idx);
-            param.min_value = desc.lower;
-            param.max_value = desc.upper;
-            // TODO: Get display value from plugin->print_parameter()
-            param.display_value = std::to_string(param.value);
-
-            device.parameters.push_back(param);
-          }
-        }
-
-        track.devices.push_back(device);
-      }
-    }
-  });
+  populate_devices(route, track.devices);
 
   return track;
 }
@@ -1813,6 +1835,18 @@ auto XDAWServer::subscribe_to_session_signals() -> void {
   _session->RouteAdded.connect_same_thread(session_connections_,
       [this](RouteList& routes) { on_routes_added(routes); });
 
+  // Subscribe to transport state changes (play/stop)
+  _session->TransportStateChange.connect_same_thread(session_connections_,
+      [this]() { on_transport_state_changed(); });
+
+  // Subscribe to position changes (jumps/locates)
+  _session->PositionChanged.connect_same_thread(session_connections_,
+      [this](samplepos_t pos) { on_position_changed(pos); });
+
+  // Subscribe to record state changes
+  _session->RecordStateChanged.connect_same_thread(session_connections_,
+      [this]() { on_transport_state_changed(); });
+
   // Subscribe to existing routes
   auto routes = _session->get_routes();
   for (const auto& route : *routes) {
@@ -1908,6 +1942,17 @@ auto XDAWServer::on_mixer_control_changed(std::shared_ptr<Route> /* route */,
   }
 
   server_->push_notification(xdaw::Notification::make_track_changed(notification));
+}
+
+auto XDAWServer::on_transport_state_changed() -> void {
+  auto notification = xdaw::TransportChanged{};
+  notification.state = build_transport_state();
+  server_->push_notification(xdaw::Notification::make_transport_changed(notification));
+}
+
+auto XDAWServer::on_position_changed(samplepos_t /* position */) -> void {
+  // Position changed (e.g., user jumped/located) - send full transport state
+  on_transport_state_changed();
 }
 
 }  // namespace ARDOUR
