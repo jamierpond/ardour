@@ -24,6 +24,7 @@
 #include <memory>
 #include <string>
 
+#include "pbd/id.h"
 #include "pbd/signals.h"
 
 #include "ardour/libardour_visibility.h"
@@ -126,6 +127,9 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
 
   // Called periodically to check for completed renders and send notifications
   auto check_pending_renders() -> void;
+
+  // Override from SessionHandlePtr
+  auto session_going_away() -> void override;
 
   // Subscribe to session/route signals for push notifications
   auto subscribe_to_session_signals() -> void;

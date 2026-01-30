@@ -86,14 +86,31 @@ XDAWServer::XDAWServer(std::int32_t port)
 XDAWServer::~XDAWServer() { stop(); }
 
 auto XDAWServer::set_session(Session* s) -> void {
-  // Clear existing connections before changing session
+  // Clear our XDAW signal connections before changing session
   unsubscribe_all();
 
-  SessionHandlePtr::set_session(s);
+  // Clear base class session connections
+  _session_connections.drop_connections();
 
+  // Set new session
   if (_session) {
+    _session = nullptr;
+  }
+
+  if (s) {
+    _session = s;
+    // Connect to DropReferences to clean up when session is destroyed
+    _session->DropReferences.connect_same_thread(
+        _session_connections,
+        std::bind(&XDAWServer::session_going_away, this));
     subscribe_to_session_signals();
   }
+}
+
+auto XDAWServer::session_going_away() -> void {
+  // Clean up our connections before clearing session
+  unsubscribe_all();
+  set_session(nullptr);
 }
 
 auto XDAWServer::setup_handlers() -> void {
@@ -1792,11 +1809,9 @@ auto XDAWServer::unsubscribe_all() -> void {
 auto XDAWServer::subscribe_to_session_signals() -> void {
   if (!_session) return;
 
-  // Subscribe to new routes being added
-  _session->RouteAdded.connect(session_connections_,
-      MISSING_INVALIDATOR,
-      [this](RouteList& routes) { on_routes_added(routes); },
-      nullptr);  // NULL = call from any thread, we'll handle thread safety
+  // Subscribe to new routes being added (same-thread callback)
+  _session->RouteAdded.connect_same_thread(session_connections_,
+      [this](RouteList& routes) { on_routes_added(routes); });
 
   // Subscribe to existing routes
   auto routes = _session->get_routes();
@@ -1825,60 +1840,50 @@ auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> voi
   // Capture route_id by value for the lambdas
   auto track_id = route_id.to_s();
 
-  // Gain (volume) control
+  // Gain (volume) control - use connect_same_thread to run callback directly
   if (auto gain_ctrl = route->gain_control()) {
-    gain_ctrl->Changed.connect(connections,
-        MISSING_INVALIDATOR,
+    gain_ctrl->Changed.connect_same_thread(connections,
         [this, track_id, gain_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
           auto coef = static_cast<float>(gain_ctrl->get_value());
           auto db = (coef > 0.0f) ? 20.0 * std::log10(coef)
                                    : -std::numeric_limits<double>::infinity();
           on_mixer_control_changed(nullptr, track_id, "volume", db);
-        },
-        nullptr);
+        });
   }
 
   // Pan (azimuth) control
   if (auto pan_ctrl = route->pan_azimuth_control()) {
-    pan_ctrl->Changed.connect(connections,
-        MISSING_INVALIDATOR,
+    pan_ctrl->Changed.connect_same_thread(connections,
         [this, track_id, pan_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
           auto azimuth = pan_ctrl->get_value();  // 0 to 1
           auto pan = (azimuth - 0.5) * 2.0;      // -1 to +1
           on_mixer_control_changed(nullptr, track_id, "pan", pan);
-        },
-        nullptr);
+        });
   }
 
   // Mute control
   if (auto mute_ctrl = route->mute_control()) {
-    mute_ctrl->Changed.connect(connections,
-        MISSING_INVALIDATOR,
+    mute_ctrl->Changed.connect_same_thread(connections,
         [this, track_id, mute_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
           on_mixer_control_changed(nullptr, track_id, "muted", mute_ctrl->muted() ? 1.0 : 0.0);
-        },
-        nullptr);
+        });
   }
 
   // Solo control
   if (auto solo_ctrl = route->solo_control()) {
-    solo_ctrl->Changed.connect(connections,
-        MISSING_INVALIDATOR,
+    solo_ctrl->Changed.connect_same_thread(connections,
         [this, track_id, solo_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
           on_mixer_control_changed(nullptr, track_id, "soloed", solo_ctrl->soloed() ? 1.0 : 0.0);
-        },
-        nullptr);
+        });
   }
 
   // Record arm (only for tracks, not busses)
   if (auto track = std::dynamic_pointer_cast<Track>(route)) {
     if (auto rec_ctrl = track->rec_enable_control()) {
-      rec_ctrl->Changed.connect(connections,
-          MISSING_INVALIDATOR,
+      rec_ctrl->Changed.connect_same_thread(connections,
           [this, track_id, rec_ctrl](bool, PBD::Controllable::GroupControlDisposition) {
             on_mixer_control_changed(nullptr, track_id, "armed", rec_ctrl->get_value() > 0.5 ? 1.0 : 0.0);
-          },
-          nullptr);
+          });
     }
   }
 }
