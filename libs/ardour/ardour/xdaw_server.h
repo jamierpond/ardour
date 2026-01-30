@@ -126,6 +126,7 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
 
   std::unique_ptr<xdaw::Server> server_;
   std::atomic<bool> tasks_pending_{false};
+  std::atomic<bool> applying_edits_{false};  // Reentrancy guard for apply_edits
 
   // Track pending render operations
   struct PendingRender {

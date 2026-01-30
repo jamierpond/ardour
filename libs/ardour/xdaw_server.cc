@@ -25,6 +25,7 @@
 #include <chrono>
 #include <fstream>
 
+#include <glib.h>
 #include <glibmm/miscutils.h>
 
 #include "ardour/audio_port.h"
@@ -152,6 +153,13 @@ auto XDAWServer::has_pending_tasks() -> bool {
   // Return true if gRPC tasks are pending OR if we have renders to poll
   return tasks_pending_.exchange(false, std::memory_order_acq_rel) ||
          !pending_renders_.empty();
+}
+
+// Helper to pump the main loop to keep UI responsive during long operations
+static auto pump_ui_thread() -> void {
+  while (g_main_context_pending(nullptr)) {
+    g_main_context_iteration(nullptr, FALSE);
+  }
 }
 
 // Helper to convert Ardour track type to XDAW
@@ -533,6 +541,20 @@ auto XDAWServer::get_plugins(const xdaw::PluginsRequest& req)
 
 auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse {
   auto response = xdaw::EditResponse{};
+
+  // Reentrancy guard - if we're already applying edits (e.g., from a nested
+  // main loop iteration), reject the request rather than causing chaos
+  if (applying_edits_.exchange(true, std::memory_order_acq_rel)) {
+    response.error_message = "Edit operation already in progress";
+    return response;
+  }
+
+  // RAII guard to ensure we clear the flag on exit
+  struct ApplyingEditsGuard {
+    std::atomic<bool>& flag;
+    ~ApplyingEditsGuard() { flag.store(false, std::memory_order_release); }
+  };
+  auto edit_guard = ApplyingEditsGuard{applying_edits_};
 
   if (!_session) {
     response.error_message = "No session";
@@ -1454,6 +1476,9 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         // Ignore unimplemented operations
         break;
     }
+
+    // Pump the main loop after each operation to keep UI responsive
+    pump_ui_thread();
   }
 
   // Finish the undo group - commits if there were changes, aborts if empty
