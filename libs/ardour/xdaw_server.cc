@@ -609,6 +609,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
 
   // Begin undo group - all operations in this batch will be undoable as one step
   auto undo_name = batch.undo_step_name.empty() ? "XDAW Edit" : batch.undo_step_name;
+  std::cerr << "[XDAW UNDO] BEGIN reversible command: \"" << undo_name << "\"" << std::endl;
   _session->begin_reversible_command(undo_name);
 
   // RAII guard to ensure proper undo handling
@@ -619,6 +620,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
     bool finished = false;
     ~UndoGuard() {
       if (!finished && session) {
+        std::cerr << "[XDAW UNDO] ABORT (early return/error)" << std::endl;
         session->abort_reversible_command();
       }
     }
@@ -626,8 +628,10 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
       if (session && !finished) {
         // Only commit if there were actual undoable changes, otherwise abort
         if (session->collected_undo_commands()) {
+          std::cerr << "[XDAW UNDO] COMMIT reversible command" << std::endl;
           session->commit_reversible_command();
         } else {
+          std::cerr << "[XDAW UNDO] ABORT (no commands collected)" << std::endl;
           session->abort_reversible_command();
         }
         finished = true;
@@ -644,6 +648,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
       Session* session;
       ~PlaylistChange() {
         if (playlist && session) {
+          std::cerr << "[XDAW UNDO] Recording playlist diff for: " << playlist->name() << std::endl;
           playlist->rdiff_and_add_command(session);
         }
       }
