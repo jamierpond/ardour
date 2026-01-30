@@ -2021,6 +2021,14 @@ auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> voi
             on_mixer_control_changed(nullptr, track_id, "armed", rec_ctrl->get_value() > 0.5 ? 1.0 : 0.0);
           });
     }
+
+    // Subscribe to playlist changes (clips added/removed/moved)
+    if (auto playlist = track->playlist()) {
+      playlist->ContentsChanged.connect_same_thread(connections,
+          [this, track_id]() {
+            on_playlist_changed(track_id);
+          });
+    }
   }
 }
 
@@ -2055,6 +2063,15 @@ auto XDAWServer::on_transport_state_changed() -> void {
 auto XDAWServer::on_position_changed(samplepos_t /* position */) -> void {
   // Position changed (e.g., user jumped/located) - send full transport state
   on_transport_state_changed();
+}
+
+auto XDAWServer::on_playlist_changed(const std::string& track_id) -> void {
+  // Emit TrackChanged with clips_changed hint
+  // Clients subscribed to TrackChanged will know to re-fetch clip data
+  auto notification = xdaw::TrackChanged{};
+  notification.track_id = track_id;
+  notification.clips_changed = true;
+  server_->push_notification(xdaw::Notification::make_track_changed(notification));
 }
 
 }  // namespace ARDOUR

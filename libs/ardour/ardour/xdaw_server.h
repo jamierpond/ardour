@@ -145,6 +145,7 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
                                  double value) -> void;
   auto on_transport_state_changed() -> void;
   auto on_position_changed(samplepos_t position) -> void;
+  auto on_playlist_changed(const std::string& track_id) -> void;
 
   std::unique_ptr<xdaw::Server> server_;
   std::atomic<bool> tasks_pending_{false};
