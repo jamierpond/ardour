@@ -1237,9 +1237,12 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
             if (new_track && new_track->playlist() != current_playlist) {
               auto new_playlist = new_track->playlist();
 
-              // Capture state for undo on both playlists
-              auto change_old = playlist_change(current_playlist);
+              // Capture state for undo on both playlists.
+              // Order matters: change_new constructed first so it's destroyed LAST.
+              // This means commands are added [old, new], and LIFO undo executes
+              // [new, old] - i.e., remove from new first, then add back to old.
               auto change_new = playlist_change(new_playlist);
+              auto change_old = playlist_change(current_playlist);
 
               // Remove from old playlist, add to new
               current_playlist->remove_region(region);
