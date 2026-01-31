@@ -867,7 +867,6 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
         std::cerr << "[XDAW] Got playlist: " << playlist->name() << std::endl;
 
-        // Convert quarter note position to samples
         auto tmap = Temporal::TempoMap::use();
         if (!tmap) {
           response.error_message = "No tempo map available";
@@ -875,7 +874,6 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
 
         auto start_beats = Temporal::Beats::from_double(cmd.start_quarters);
-        auto start_samples = tmap->sample_at(start_beats);
 
         std::shared_ptr<Region> region;
 
@@ -1103,7 +1101,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
 
         // Add region to playlist at the specified position
-        std::cerr << "[XDAW] Adding region to playlist at sample " << start_samples << std::endl;
+        std::cerr << "[XDAW] Adding region to playlist at beat " << start_beats << std::endl;
         try {
           auto position = Temporal::timepos_t(start_beats);
 
@@ -1215,8 +1213,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         }
 
         auto new_beats = Temporal::Beats::from_double(cmd.new_start_quarters);
-        auto new_samples = tmap->sample_at(new_beats);
-        auto new_pos = Temporal::timepos_t(new_samples);
+        auto new_pos = Temporal::timepos_t(new_beats);
 
         // Find current track ID
         std::string from_track_id;
@@ -1325,7 +1322,7 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           // Change start position (trim head)
           if (cmd.new_start_quarters.has_value()) {
             auto beats = Temporal::Beats::from_double(*cmd.new_start_quarters);
-            auto new_pos = Temporal::timepos_t(tmap->sample_at(beats));
+            auto new_pos = Temporal::timepos_t(beats);
             region->set_position(new_pos);
             std::cerr << "[XDAW] Clip start set to quarter " << *cmd.new_start_quarters << std::endl;
           }
