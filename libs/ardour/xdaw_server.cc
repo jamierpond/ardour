@@ -1548,8 +1548,25 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
           return response;
         }
 
+        // Find the route this processor belongs to
+        std::shared_ptr<Route> found_route;
+        for (const auto& route : *routes) {
+          if (route->processor_by_id(PBD::ID(cmd.device_id))) {
+            found_route = route;
+            break;
+          }
+        }
+
         found_insert->enable(cmd.enabled);
         std::cerr << "[XDAW] Device " << (cmd.enabled ? "enabled" : "disabled") << std::endl;
+
+        // Send notification that devices changed on this track
+        if (found_route) {
+          auto notification = xdaw::TrackChanged{};
+          notification.track_id = found_route->id().to_s();
+          notification.devices_changed = true;
+          server_->push_notification(xdaw::Notification::make_track_changed(notification));
+        }
         break;
       }
 
