@@ -135,6 +135,8 @@ class LIBARDOUR_API XDAWServer : public SessionHandlePtr {
   // Subscribe to session/route signals for push notifications
   auto subscribe_to_session_signals() -> void;
   auto subscribe_to_route_signals(std::shared_ptr<ARDOUR::Route> route) -> void;
+  auto subscribe_to_processor_params(std::shared_ptr<ARDOUR::Route> route,
+                                      PBD::ScopedConnectionList& connections) -> void;
   auto unsubscribe_all() -> void;
 
   // Signal handlers

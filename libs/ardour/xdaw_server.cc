@@ -2039,7 +2039,33 @@ auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> voi
     }
   }
 
-  // Subscribe to plugin parameter changes
+  // Subscribe to plugin parameter changes for existing processors
+  subscribe_to_processor_params(route, connections);
+
+  // Subscribe to processors_changed to catch newly added/removed plugins
+  route->processors_changed.connect_same_thread(connections,
+      [this, route](RouteProcessorChange) {
+        auto route_id = route->id();
+        auto track_id = route_id.to_s();
+
+        std::cerr << "[XDAW] Processors changed on track " << track_id << std::endl;
+
+        // Re-subscribe to all processor parameters when processors change
+        auto& conns = route_connections_[route_id];
+        subscribe_to_processor_params(route, conns);
+
+        // Notify frontend that devices changed on this track
+        auto notification = xdaw::TrackChanged{};
+        notification.track_id = track_id;
+        notification.devices_changed = true;
+        server_->push_notification(xdaw::Notification::make_track_changed(notification));
+      });
+}
+
+auto XDAWServer::subscribe_to_processor_params(std::shared_ptr<Route> route,
+                                                PBD::ScopedConnectionList& connections) -> void {
+  auto track_id = route->id().to_s();
+
   route->foreach_processor([this, track_id, &connections](std::weak_ptr<Processor> wp) {
     auto proc = wp.lock();
     if (!proc) return;
@@ -2052,6 +2078,8 @@ auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> voi
 
     auto device_id = pi->id().to_s();
     auto param_count = plugin->parameter_count();
+
+    std::cerr << "[XDAW] Subscribing to " << param_count << " params on device " << device_id << std::endl;
 
     for (uint32_t i = 0; i < param_count; ++i) {
       auto ok = false;
@@ -2066,6 +2094,7 @@ auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> voi
       ctrl->Changed.connect_same_thread(connections,
           [this, track_id, device_id, param_id, ctrl](bool, PBD::Controllable::GroupControlDisposition) {
             auto value = ctrl->get_value();
+            std::cerr << "[XDAW] Parameter changed: " << device_id << "/" << param_id << " = " << value << std::endl;
             auto notification = xdaw::DeviceParameterChanged{};
             notification.track_id = track_id;
             notification.device_id = device_id;
