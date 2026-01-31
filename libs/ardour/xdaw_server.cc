@@ -842,6 +842,21 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
         const auto& cmd = op.create_clip;
         std::cerr << "[XDAW] CreateClip: track_id=" << cmd.track_id << std::endl;
 
+        // Validate position - clips cannot have negative start positions
+        if (cmd.start_quarters < 0.0) {
+          response.error_message = "Invalid clip position: " +
+                                    std::to_string(cmd.start_quarters) +
+                                    " quarters (cannot be negative)";
+          return response;
+        }
+        // Validate length if specified
+        if (cmd.length_quarters < 0.0) {
+          response.error_message = "Invalid clip length: " +
+                                    std::to_string(cmd.length_quarters) +
+                                    " quarters (cannot be negative)";
+          return response;
+        }
+
         // Get the target track
         std::cerr << "[XDAW] Looking up route by ID: " << cmd.track_id << std::endl;
         auto route = _session->route_by_id(PBD::ID(cmd.track_id));
@@ -1200,6 +1215,14 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
                   << " target_track=" << cmd.target_track_id
                   << " new_start_quarters=" << cmd.new_start_quarters << std::endl;
 
+        // Validate position - clips cannot have negative start positions
+        if (cmd.new_start_quarters < 0.0) {
+          response.error_message = "Invalid clip position: " +
+                                    std::to_string(cmd.new_start_quarters) +
+                                    " quarters (cannot be negative)";
+          return response;
+        }
+
         auto region = RegionFactory::region_by_id(PBD::ID(cmd.clip_id));
         if (!region) {
           response.error_message = "Clip not found: " + cmd.clip_id;
@@ -1287,6 +1310,20 @@ auto XDAWServer::apply_edits(const xdaw::EditBatch& batch) -> xdaw::EditResponse
       case xdaw::EditOperationType::ResizeClip: {
         const auto& cmd = op.resize_clip;
         std::cerr << "[XDAW] ResizeClip: clip_id=" << cmd.clip_id << std::endl;
+
+        // Validate positions
+        if (cmd.new_start_quarters.has_value() && *cmd.new_start_quarters < 0.0) {
+          response.error_message = "Invalid clip start: " +
+                                    std::to_string(*cmd.new_start_quarters) +
+                                    " quarters (cannot be negative)";
+          return response;
+        }
+        if (cmd.new_length_quarters.has_value() && *cmd.new_length_quarters <= 0.0) {
+          response.error_message = "Invalid clip length: " +
+                                    std::to_string(*cmd.new_length_quarters) +
+                                    " quarters (must be positive)";
+          return response;
+        }
 
         auto region = RegionFactory::region_by_id(PBD::ID(cmd.clip_id));
         if (!region) {
