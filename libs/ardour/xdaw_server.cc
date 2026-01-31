@@ -2038,6 +2038,44 @@ auto XDAWServer::subscribe_to_route_signals(std::shared_ptr<Route> route) -> voi
           });
     }
   }
+
+  // Subscribe to plugin parameter changes
+  route->foreach_processor([this, track_id, &connections](std::weak_ptr<Processor> wp) {
+    auto proc = wp.lock();
+    if (!proc) return;
+
+    auto pi = std::dynamic_pointer_cast<PluginInsert>(proc);
+    if (!pi) return;
+
+    auto plugin = pi->plugin();
+    if (!plugin) return;
+
+    auto device_id = pi->id().to_s();
+    auto param_count = plugin->parameter_count();
+
+    for (uint32_t i = 0; i < param_count; ++i) {
+      auto ok = false;
+      auto param_idx = plugin->nth_parameter(i, ok);
+      if (!ok) continue;
+
+      auto param = Evoral::Parameter(PluginAutomation, 0, param_idx);
+      auto ctrl = pi->automation_control(param);
+      if (!ctrl) continue;
+
+      auto param_id = std::to_string(param_idx);
+      ctrl->Changed.connect_same_thread(connections,
+          [this, track_id, device_id, param_id, ctrl](bool, PBD::Controllable::GroupControlDisposition) {
+            auto value = ctrl->get_value();
+            auto notification = xdaw::DeviceParameterChanged{};
+            notification.track_id = track_id;
+            notification.device_id = device_id;
+            notification.param_id = param_id;
+            notification.value = value;
+            notification.display_value = std::to_string(value);
+            server_->push_notification(xdaw::Notification::make_device_parameter_changed(notification));
+          });
+    }
+  });
 }
 
 auto XDAWServer::on_mixer_control_changed(std::shared_ptr<Route> /* route */,
