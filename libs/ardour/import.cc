@@ -252,8 +252,7 @@ compose_status_message (const string& path,
 }
 
 static void
-write_audio_data_to_new_files (ImportableSource* source, ImportStatus& status,
-                               vector<std::shared_ptr<Source> >& newfiles)
+write_audio_data_to_new_files (ImportableSource* source, ImportStatus& status, vector<std::shared_ptr<Source> >& newfiles)
 {
 	const samplecnt_t nframes = ResampledImportableSource::blocksize;
 	std::shared_ptr<AudioFileSource> afs;
@@ -1031,8 +1030,7 @@ Session::import_files (ImportStatus& status)
 		}
 
 		if (source) { // audio
-			status.doing_what = compose_status_message (*p, source->samplerate(),
-			                                            sample_rate(), status.current, status.total);
+			status.doing_what = compose_status_message (*p, source->samplerate(), sample_rate(), status.current, status.total);
 			write_audio_data_to_new_files (source.get(), status, successful_imports);
 		} else if (smf_reader) { // midi
 			status.doing_what = string_compose(_("Loading MIDI file %1"), *p);
@@ -1048,6 +1046,9 @@ Session::import_files (ImportStatus& status)
 			}
 		}
 
+		std::copy (successful_imports.begin(), successful_imports.end(), std::back_inserter(status.sources));
+		successful_imports.clear ();
+
 		++status.current;
 		status.progress = 0;
 	}
@@ -1061,7 +1062,7 @@ Session::import_files (ImportStatus& status)
 
 		/* flush the final length(s) to the header(s) */
 
-		for (Sources::iterator x = successful_imports.begin(); x != successful_imports.end(); ) {
+		for (Sources::iterator x = status.sources.begin(); x != status.sources.end(); ) {
 
 			if ((afs = std::dynamic_pointer_cast<AudioFileSource>(*x)) != 0) {
 				afs->update_header((*x)->natural_position().samples(), *now, xnow);
@@ -1094,13 +1095,11 @@ Session::import_files (ImportStatus& status)
 			/* don't create tracks for empty MIDI sources (channels) */
 
 			if ((smfs = std::dynamic_pointer_cast<SMFSource>(*x)) != 0 && smfs->is_empty()) {
-				x = successful_imports.erase(x);
+				x = status.sources.erase(x);
 			} else {
 				++x;
 			}
 		}
-
-		std::copy (successful_imports.begin(), successful_imports.end(), std::back_inserter(status.sources));
 
 		/* Now, and only now, announce the newly created and to-be-used sources */
 
