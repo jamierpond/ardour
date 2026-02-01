@@ -1,0 +1,209 @@
+Using udevCheckHook
+Setting top to                           : /home/jamie/projects/xdaw/examples/ardour 
+Setting out to                           : /home/jamie/projects/xdaw/examples/ardour/build 
+Checking for 'gcc' (C compiler)          : gcc 
+Checking for 'g++' (C++ compiler)        : g++ 
+
+Global Configuration 
+ * Install prefix                                    : /usr/local 
+ * Debuggable build                                  : True 
+ * Build documentation                               : False 
+
+Ardour Configuration 
+ * Will build against private GTK dependency stack   : no 
+ * Will rely on libintl built into libc              : yes 
+ * Will build against private Ardour dependency stack : no 
+Checking for function 'dlopen' in dlfcn.h            : yes 
+Checking for boost library >= 1.68                   : yes 
+Checking for program 'pkg-config'                    : /nix/store/rvp7qlpf5jqvdckjy1afjb6aha6j8dxg-pkg-config-wrapper-0.29.2/bin/pkg-config 
+Checking for 'alsa'                                  : yes 
+Checking for 'libpulse'                              : yes 
+Checking for 'glib-2.0' >= 2.28                      : yes 
+Checking for 'gthread-2.0' >= 2.2                    : yes 
+Checking for 'glibmm-2.4' >= 2.32.0                  : yes 
+Checking for 'sndfile' >= 1.0.18                     : yes 
+Checking for 'giomm-2.4' >= 2.2                      : yes 
+Checking for 'libcurl' >= 7.55.0                     : yes 
+Checking for 'libarchive' >= 3.0.0                   : yes 
+Checking for 'liblo' >= 0.26                         : yes 
+Checking for 'taglib' >= 1.9                         : yes 
+Checking for 'vamp-sdk' >= 2.1                       : yes 
+Checking for 'vamp-hostsdk' >= 2.1                   : yes 
+Checking for 'rubberband'                            : yes 
+Checking for XDAW SDK                                : /home/jamie/projects/xdaw/examples/ardour/../../sdk 
+Checking for 'libusb-1.0' >= 1.0.16                  : yes 
+Checking for rubberband >= 3.0.0                     : yes 
+Checking for sndfile RF64=>RIFF support              : Found 
+Checking for int128 support                          : lots of bits found. 
+Checking for 'futex' syscall support                 : yes 
+Checking for 'jack' >= 1.9.10                        : yes 
+Checking for clang                                   : no 
+Checking compiler for AVX512F intrinsics             : Found 
+Checking compiler for AVX/FMA intrinsics             : Found 
+Checking for gcc/lld-style -zexecstack               : yes 
+Checking for 'fftw3f'                                : yes 
+Checking for 'libudev'                               : yes 
+Checking for 'aubio' >= 0.3.2                        : yes 
+Checking for 'aubio' >= 0.4.0                        : yes 
+Checking for 'gobject-2.0'                           : yes 
+Checking for 'gio-2.0' >= 2.2                        : yes 
+Checking for 'libpng'                                : yes 
+Checking for header unistd.h                         : yes 
+Checking for 'pango' >= 1.20                         : yes 
+Checking for 'cairo' >= 1.12                         : yes 
+Checking for 'pangocairo'                            : yes 
+Checking for 'gio-unix-2.0'                          : yes 
+Checking for 'xrandr' >= 1.2.99                      : yes 
+Checking for 'xrandr' >= 1.5.0                       : yes 
+Checking for header X11/extensions/Xinerama.h        : yes 
+Checking for 'xi' >= 1.7.10                          : yes 
+Checking for header unistd.h                         : yes 
+Checking for 'gmodule-2.0'                           : yes 
+Checking for 'x11'                                   : yes 
+Checking for 'xext'                                  : yes 
+Checking for header unistd.h                         : yes 
+Checking for 'sigc++-2.0' >= 2.0                     : yes 
+Checking for 'cairomm-1.0' >= 1.8.4                  : yes 
+Checking for 'pangomm-1.4' >= 1.4                    : yes 
+Checking for 'lv2' >= 1.16.0                         : yes 
+Checking for 'libxml-2.0'                            : yes 
+Checking for header execinfo.h                       : yes 
+Checking for header unistd.h                         : yes 
+Checking for function 'posix_memalign' in stdlib.h   : yes 
+Checking for function 'getmntent' in mntent.h        : yes 
+Checking for function 'localtime_r' in time.h        : yes 
+Checking for 'cppunit' >= 1.12.0                     : not found 
+Checking for header cwiid.h                          : not found 
+You are missing the cwiid headers needed to compile wiimote support
+Checking for 'libwebsockets' >= 2.0.0                : yes 
+Checking for 'jack' >= 1.9.10                        : yes 
+Checking for JACK metadata API                       : ok 
+Checking for jack_port_rename()                      : ok 
+Checking for program 'gas, gcc'                      : as 
+Checking for program 'ar'                            : ar 
+Checking for 'lrdf' >= 0.4.0                         : yes 
+Checking for 'samplerate' >= 0.1.0                   : yes 
+Checking for 'lv2' >= 1.2.0                          : yes 
+Checking for 'lv2' >= 1.10.0                         : yes 
+Checking for 'lv2' >= 1.17.2                         : yes 
+Checking for 'lv2' >= 1.18.6                         : yes 
+Checking for 'serd-0' >= 0.14.0                      : yes 
+Checking for 'sord-0' >= 0.8.0                       : yes 
+Checking for 'sratom-0' >= 0.2.0                     : yes 
+Checking for 'lilv-0' >= 0.24.2                      : yes 
+Checking for 'ogg' >= 1.1.2                          : yes 
+Checking for 'flac' >= 1.2.1                         : yes 
+Checking for 'fftw3f' >= 3.3.5                       : yes 
+Checking for header sys/vfs.h                        : yes 
+Checking for header sys/statvfs.h                    : yes 
+Checking for 'ioprio_set' syscall support            : no 
+Checking for header boost/ptr_container/ptr_list.hpp : yes 
+Checking for 'samplerate' >= 0.1.7                   : yes 
+Checking for 'lv2' >= 1.0.0                          : yes 
+Checking for 'cairo' >= 1.12.0                       : yes 
+Checking for 'gthread-2.0' >= 2.10.1                 : yes 
+Checking for 'pangoft2' >= 1.36.8                    : yes 
+Checking for 'fontconfig'                            : yes 
+Checking for header unistd.h                         : yes 
+Checking for static libreadline                      : not found 
+Checking for libreadline                             : yes 
+ * build session-utils                               : yes 
+Checking for 'dbus-1'                                : yes 
+ * Build documentation                               : False 
+ * Debuggable build                                  : True 
+ * Export all symbols (backtrace)                    : False 
+ * Install prefix                                    : /usr/local 
+ * Strict compiler flags                             : [] 
+ * Internal Shared Libraries                         : True 
+ * Use External Libraries                            : False 
+ * Library exports hidden                            : True 
+ * Free/Demo copy                                    : False 
+ * ALSA DBus Reservation                             : True 
+ * Architecture flags                                : None 
+ * ARM NEON support                                  : False 
+ * Aubio                                             : True 
+ * AudioUnits                                        : False 
+ * Build target                                      : x86_64 
+ * Canvas Test UI                                    : False 
+ * Beatbox test app                                  : False 
+ * CoreAudio                                         : False 
+ * Debug RT allocations                              : False 
+ * Debug Symbols                                     : True 
+ * Denormal exceptions                               : False 
+ * Dr. Mingw                                         : False 
+ * FLAC                                              : True 
+ * FPU optimization                                  : True 
+ * FPU AVX512F support                               : True 
+ * FPU AVX/FMA support                               : True 
+ * Futex Semaphore                                   : True 
+ * Freedesktop files                                 : False 
+ * G_ENABLE_DEBUG                                    : True 
+ * I/O Priority Set                                  : False 
+ * Libjack linking                                   : link 
+ * Libjack metadata                                  : True 
+ * Lua Binding Doc                                   : False 
+ * Lua Commandline Tool                              : True 
+ * LV2 UI embedding                                  : True 
+ * LV2 support                                       : True 
+ * LV2 extensions                                    : True 
+ * LXVST support                                     : True 
+ * Mac VST support                                   : False 
+ * NI-Maschine                                       : False 
+ * OGG                                               : True 
+ * Phone home                                        : True 
+ * Program name                                      : Ardour 
+ * Samplerate                                        : True 
+ * PT format                                         : False 
+ * PTW32 Semaphore                                   : False 
+ * Threaded WaveViews                                : True 
+ * Translation                                       : True 
+ * Unit tests                                        : False 
+ * Use LLD linker                                    : False 
+ * VST3 support                                      : True 
+ * Windows VST support                               : False 
+ * Wiimote support                                   : False 
+ * Windows key                                       : Mod4><Super 
+ * PortAudio Backend                                 : False 
+ * CoreAudio/Midi Backend                            : False 
+ * ALSA Backend                                      : True 
+ * Dummy backend                                     : True 
+ * JACK Backend                                      : True 
+ * PulseAudio Backend                                : True 
+ * Buildstack                                        : -system- 
+ * Mac i386 Architecture                             : False 
+ * Mac ppc Architecture                              : False 
+ * Mac arm64 Architecture                            : False 
+ * C compiler flags                                  : ['-I/home/jamie/projects/xdaw/examples/ardour', '-DHAVE_RF64_RIFF', '-DCOMPILER_INT128_SUPPORT', '-DWAF_BUILD', '-g', '-fshow-column', '-DG_ENABLE_DEBUG', '-DARCH_X86', '-mmmx', '-msse', '-mfpmath=sse', '-DUSE_XMMINTRIN', '-DBUILD_SSE_OPTIMIZATIONS', '-DLXVST_64BIT', '-Wall', '-Wpointer-arith', '-Wcast-qual', '-Wcast-align', '-Wno-unused-parameter', '-DBOOST_SYSTEM_NO_DEPRECATED', '-D_ISOC9X_SOURCE', '-D_LARGEFILE64_SOURCE', '-D_FILE_OFFSET_BITS=64', '-DPROGRAM_NAME="Ardour"', '-DPROGRAM_VERSION="9"', '-Wstrict-prototypes', '-Wmissing-prototypes', '-D_POSIX_C_SOURCE=200809L'] 
+ * C++ compiler flags                                : ['-I/home/jamie/projects/xdaw/examples/ardour', '-DHAVE_RF64_RIFF', '-DCOMPILER_INT128_SUPPORT', '-DWAF_BUILD', '-g', '-fshow-column', '-DG_ENABLE_DEBUG', '-DARCH_X86', '-mmmx', '-msse', '-mfpmath=sse', '-DUSE_XMMINTRIN', '-DBUILD_SSE_OPTIMIZATIONS', '-DLXVST_64BIT', '-Wall', '-Wpointer-arith', '-Wcast-qual', '-Wcast-align', '-Wno-unused-parameter', '-DBOOST_SYSTEM_NO_DEPRECATED', '-D_ISOC9X_SOURCE', '-D_LARGEFILE64_SOURCE', '-D_FILE_OFFSET_BITS=64', '-DPROGRAM_NAME="Ardour"', '-DPROGRAM_VERSION="9"', '-Woverloaded-virtual', '-Wno-unused-local-typedefs', '-Wno-deprecated-copy', '-D__STDC_LIMIT_MACROS', '-D__STDC_FORMAT_MACROS', '-DCANVAS_DEBUG', '-DBOOST_ERROR_CODE_HEADER_ONLY'] 
+ * Linker flags                                      : [''] 
+
+'configure' finished successfully (20.452s)
+Waf: Entering directory `/home/jamie/projects/xdaw/examples/ardour/build'
+Git version: 9.0-rc3-138-g7a89eb313b
+
+Writing revision info to libs/ardour/revision.cc using 9.0-rc3-138-g7a89eb313b, 2026-01-31
+[  67/1878] Linking build/libs/pbd/libpbd.so
+[ 111/1878] Linking build/libs/tk/ztk/libztk.so
+[ 128/1878] Linking build/libs/tk/ydk-pixbuf/libydk-pixbuf.so
+[ 207/1878] Linking build/libs/lua/libliblua.a
+[ 449/1878] Linking build/libs/tk/suil/libsuil.so
+[ 579/1878] Linking build/libs/zita-resampler/libzita-resampler.a
+[ 580/1878] Linking build/libs/fluidsynth/liblibfluidsynth.a
+[ 581/1878] Linking build/libs/libltc/liblibltc.a
+[ 582/1878] Linking build/libs/zita-convolver/libzita-convolver.a
+[ 583/1878] Linking build/libs/staffpad/libstaffpad.a
+[ 584/1878] Compiling libs/ardour/element_import_handler.cc
+[ 585/1878] Compiling libs/ardour/debug.cc
+[ 593/1878] Compiling libs/ardour/delivery.cc
+[ 607/1878] Linking build/libs/tk/ydk/libydk.so
+[ 608/1878] Linking build/libs/tk/ztkmm/libztkmm.so
+[ 609/1878] Linking build/libs/temporal/libtemporal.so
+[ 610/1878] Linking build/libs/tk/ytk/libytk.so
+[ 611/1878] Compiling libs/ardour/vst3_host.cc
+[ 612/1878] Linking build/libs/ptformat/libptformat.so
+[ 613/1878] Linking build/libs/audiographer/libaudiographer.so
+[ 614/1878] Linking build/libs/evoral/libsmf.a
+[ 615/1878] Linking build/libs/tk/ydkmm/libydkmm.so
+[ 616/1878] Compiling libs/ardour/sse_functions_64bit.s
+as: invalid option -- 'H'
+

@@ -178,7 +178,9 @@ public:
    * @param current_time Current time.
    * @return <tt>true</tt> if the image may need updating.
    */
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
   bool advance(const Glib::TimeVal& current_time);
+G_GNUC_END_IGNORE_DEPRECATIONS
   
   /** Possibly advances an animation to a new frame. Chooses the frame based
    * on the start time passed to Gdk::PixbufAnimation::get_iter().

@@ -162,10 +162,12 @@ bool PixbufAnimationIter::on_currently_loading_frame() const
   return gdk_pixbuf_animation_iter_on_currently_loading_frame(const_cast<GdkPixbufAnimationIter*>(gobj()));
 }
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 bool PixbufAnimationIter::advance(const Glib::TimeVal& current_time)
 {
   return gdk_pixbuf_animation_iter_advance(gobj(), static_cast<const GTimeVal*>(&current_time));
 }
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 
 } // namespace Gdk

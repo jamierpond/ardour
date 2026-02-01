@@ -168,6 +168,7 @@ Glib::RefPtr<Pixbuf> PixbufAnimation::get_static_image()
   return retvalue;
 }
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 Glib::RefPtr<PixbufAnimationIter> PixbufAnimation::get_iter(const GTimeVal* start_time)
 {
   Glib::RefPtr<PixbufAnimationIter> retvalue = Glib::wrap(gdk_pixbuf_animation_get_iter(gobj(), start_time));
@@ -175,6 +176,7 @@ Glib::RefPtr<PixbufAnimationIter> PixbufAnimation::get_iter(const GTimeVal* star
     retvalue->reference(); //The function does not do a ref for us.
   return retvalue;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 
 } // namespace Gdk

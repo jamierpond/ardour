@@ -121,7 +121,9 @@ public:
   
   Glib::RefPtr<Pixbuf> get_static_image();
   
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
   Glib::RefPtr<PixbufAnimationIter> get_iter(const GTimeVal* start_time);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 
 public:
