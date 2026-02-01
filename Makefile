@@ -62,18 +62,10 @@ build:
 
 # Run from build directory (builds first)
 run: build check-port
-ifeq ($(UNAME_S),Darwin)
-	cd gtk2_ardour && OS_ACTIVITY_MODE=disable ./ardev
-else
-	cd gtk2_ardour && ./ardev
-endif
+	cd gtk2_ardour && $(RUN_ENV) ./ardev
 
 # Debug from build directory (builds first)
 debug: build check-port
 	@TOP=$$(pwd) && \
 	. build/gtk2_ardour/ardev_common_waf.sh && \
-ifeq ($(UNAME_S),Darwin)
-	OS_ACTIVITY_MODE=disable lldb -- $$TOP/$$EXECUTABLE
-else
-	gdb --args $$TOP/$$EXECUTABLE
-endif
+	$(RUN_ENV) $(DEBUGGER) $$TOP/$$EXECUTABLE
