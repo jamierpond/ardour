@@ -1046,12 +1046,18 @@ Session::import_files (ImportStatus& status)
 			}
 		}
 
+		if (status.cancel) {
+			break;
+		}
+
 		std::copy (successful_imports.begin(), successful_imports.end(), std::back_inserter(status.sources));
 		successful_imports.clear ();
 
 		++status.current;
 		status.progress = 0;
 	}
+
+	std::cerr << "paths done, cancel = " << status.cancel << std::endl;
 
 	if (!status.cancel) {
 		struct tm* now;
@@ -1109,6 +1115,7 @@ Session::import_files (ImportStatus& status)
 
 	} else {
 		try {
+			std::cerr << "Cancelled, will remove " << delete_if_cancelled.size() << std::endl;
 			std::for_each (delete_if_cancelled.begin(), delete_if_cancelled.end(), remove_file_source);
 		} catch (...) {
 			error << _("Failed to remove some files after failed/cancelled import operation") << endmsg;
