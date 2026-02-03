@@ -86,31 +86,25 @@ XDAWServer::XDAWServer(std::int32_t port)
 XDAWServer::~XDAWServer() { stop(); }
 
 auto XDAWServer::set_session(Session* s) -> void {
-  // Clear our XDAW signal connections before changing session
+  // Clear our XDAW-specific signal connections before changing session
   unsubscribe_all();
 
-  // Clear base class session connections
-  _session_connections.drop_connections();
+  // Let base class handle session lifecycle (DropReferences connection,
+  // _gone_away_emitted flag for debug assertions, etc.)
+  SessionHandlePtr::set_session(s);
 
-  // Set new session
-  if (_session) {
-    _session = nullptr;
-  }
-
+  // Subscribe to session signals for push notifications if we have a new session
   if (s) {
-    _session = s;
-    // Connect to DropReferences to clean up when session is destroyed
-    _session->DropReferences.connect_same_thread(
-        _session_connections,
-        std::bind(&XDAWServer::session_going_away, this));
     subscribe_to_session_signals();
   }
 }
 
 auto XDAWServer::session_going_away() -> void {
-  // Clean up our connections before clearing session
+  // Clean up our XDAW-specific connections before the session is cleared
   unsubscribe_all();
-  set_session(nullptr);
+
+  // Let base class handle its cleanup (sets _gone_away_emitted, calls set_session(0))
+  SessionHandlePtr::session_going_away();
 }
 
 auto XDAWServer::setup_handlers() -> void {
