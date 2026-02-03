@@ -376,14 +376,12 @@ def build(bld):
     # x86_64-w64-mingw32-as (mingw) -D flag is for debug messages
     if bld.env['build_target'] == 'mingw':
         class asm(Task.classes['asm']): run_str = '${AS} ${ASFLAGS} ${ASMPATH_ST:INCPATHS} ${AS_SRC_F}${SRC} ${AS_TGT_F}${TGT}'
-    else:
-        # Override standard asm rule to use CC/CXX for .s files to handle dependency tracking flags correctly if they are leaking in,
-        # OR just ensure we don't pass C compiler flags to 'as'.
-        # But 'as' doesn't take -H.
-        # It's likely that waf's default 'asm' tool is picking up CFLAGS/CXXFLAGS including -H?
-        # Actually, let's try just compiling .s files with the C compiler driver which knows how to handle -H (by ignoring it or passing it to preprocessor).
-        # But wait, these are raw .s files, not .S (preprocessed).
-        pass
+    
+    # Workaround for Nix build environment injecting -H into flags which 'as' rejects
+    # We define a custom asm rule that uses the C compiler driver (which understands -H)
+    # instead of the raw assembler.
+    elif bld.env['build_target'] == 'x86_64' or bld.env['build_target'] == 'i686':
+         class asm(Task.classes['asm']): run_str = '${CC} ${ASFLAGS} ${ASMPATH_ST:INCPATHS} -c ${SRC} -o ${TGT}'
 
     # operate on copy to avoid adding sources twice
     sources = list(libardour_sources)
@@ -501,12 +499,12 @@ def build(bld):
 
     if not Options.options.no_fpu_optimization:
         if (bld.env['build_target'] == 'i386' or bld.env['build_target'] == 'i686'):
-            obj.source += [ 'sse_functions_xmm.cc', 'sse_functions.S', ]
+            obj.source += [ 'sse_functions_xmm.cc', 'sse_functions.s', ]
             avx_sources = [ 'sse_functions_avx_linux.cc' ]
             fma_sources = [ 'x86_functions_fma.cc' ]
             avx512f_sources = [ 'x86_functions_avx512f.cc' ]
         elif bld.env['build_target'] == 'x86_64':
-            obj.source += [ 'sse_functions_xmm.cc', 'sse_functions_64bit.S', ]
+            obj.source += [ 'sse_functions_xmm.cc', 'sse_functions_64bit.s', ]
             avx_sources = [ 'sse_functions_avx_linux.cc' ]
             fma_sources = [ 'x86_functions_fma.cc' ]
             avx512f_sources = [ 'x86_functions_avx512f.cc' ]

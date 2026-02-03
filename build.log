@@ -1,209 +1,431 @@
-Using udevCheckHook
-Setting top to                           : /home/jamie/projects/xdaw/examples/ardour 
-Setting out to                           : /home/jamie/projects/xdaw/examples/ardour/build 
-Checking for 'gcc' (C compiler)          : gcc 
-Checking for 'g++' (C++ compiler)        : g++ 
-
-Global Configuration 
- * Install prefix                                    : /usr/local 
- * Debuggable build                                  : True 
- * Build documentation                               : False 
-
-Ardour Configuration 
- * Will build against private GTK dependency stack   : no 
- * Will rely on libintl built into libc              : yes 
- * Will build against private Ardour dependency stack : no 
-Checking for function 'dlopen' in dlfcn.h            : yes 
-Checking for boost library >= 1.68                   : yes 
-Checking for program 'pkg-config'                    : /nix/store/rvp7qlpf5jqvdckjy1afjb6aha6j8dxg-pkg-config-wrapper-0.29.2/bin/pkg-config 
-Checking for 'alsa'                                  : yes 
-Checking for 'libpulse'                              : yes 
-Checking for 'glib-2.0' >= 2.28                      : yes 
-Checking for 'gthread-2.0' >= 2.2                    : yes 
-Checking for 'glibmm-2.4' >= 2.32.0                  : yes 
-Checking for 'sndfile' >= 1.0.18                     : yes 
-Checking for 'giomm-2.4' >= 2.2                      : yes 
-Checking for 'libcurl' >= 7.55.0                     : yes 
-Checking for 'libarchive' >= 3.0.0                   : yes 
-Checking for 'liblo' >= 0.26                         : yes 
-Checking for 'taglib' >= 1.9                         : yes 
-Checking for 'vamp-sdk' >= 2.1                       : yes 
-Checking for 'vamp-hostsdk' >= 2.1                   : yes 
-Checking for 'rubberband'                            : yes 
-Checking for XDAW SDK                                : /home/jamie/projects/xdaw/examples/ardour/../../sdk 
-Checking for 'libusb-1.0' >= 1.0.16                  : yes 
-Checking for rubberband >= 3.0.0                     : yes 
-Checking for sndfile RF64=>RIFF support              : Found 
-Checking for int128 support                          : lots of bits found. 
-Checking for 'futex' syscall support                 : yes 
-Checking for 'jack' >= 1.9.10                        : yes 
-Checking for clang                                   : no 
-Checking compiler for AVX512F intrinsics             : Found 
-Checking compiler for AVX/FMA intrinsics             : Found 
-Checking for gcc/lld-style -zexecstack               : yes 
-Checking for 'fftw3f'                                : yes 
-Checking for 'libudev'                               : yes 
-Checking for 'aubio' >= 0.3.2                        : yes 
-Checking for 'aubio' >= 0.4.0                        : yes 
-Checking for 'gobject-2.0'                           : yes 
-Checking for 'gio-2.0' >= 2.2                        : yes 
-Checking for 'libpng'                                : yes 
-Checking for header unistd.h                         : yes 
-Checking for 'pango' >= 1.20                         : yes 
-Checking for 'cairo' >= 1.12                         : yes 
-Checking for 'pangocairo'                            : yes 
-Checking for 'gio-unix-2.0'                          : yes 
-Checking for 'xrandr' >= 1.2.99                      : yes 
-Checking for 'xrandr' >= 1.5.0                       : yes 
-Checking for header X11/extensions/Xinerama.h        : yes 
-Checking for 'xi' >= 1.7.10                          : yes 
-Checking for header unistd.h                         : yes 
-Checking for 'gmodule-2.0'                           : yes 
-Checking for 'x11'                                   : yes 
-Checking for 'xext'                                  : yes 
-Checking for header unistd.h                         : yes 
-Checking for 'sigc++-2.0' >= 2.0                     : yes 
-Checking for 'cairomm-1.0' >= 1.8.4                  : yes 
-Checking for 'pangomm-1.4' >= 1.4                    : yes 
-Checking for 'lv2' >= 1.16.0                         : yes 
-Checking for 'libxml-2.0'                            : yes 
-Checking for header execinfo.h                       : yes 
-Checking for header unistd.h                         : yes 
-Checking for function 'posix_memalign' in stdlib.h   : yes 
-Checking for function 'getmntent' in mntent.h        : yes 
-Checking for function 'localtime_r' in time.h        : yes 
-Checking for 'cppunit' >= 1.12.0                     : not found 
-Checking for header cwiid.h                          : not found 
-You are missing the cwiid headers needed to compile wiimote support
-Checking for 'libwebsockets' >= 2.0.0                : yes 
-Checking for 'jack' >= 1.9.10                        : yes 
-Checking for JACK metadata API                       : ok 
-Checking for jack_port_rename()                      : ok 
-Checking for program 'gas, gcc'                      : as 
-Checking for program 'ar'                            : ar 
-Checking for 'lrdf' >= 0.4.0                         : yes 
-Checking for 'samplerate' >= 0.1.0                   : yes 
-Checking for 'lv2' >= 1.2.0                          : yes 
-Checking for 'lv2' >= 1.10.0                         : yes 
-Checking for 'lv2' >= 1.17.2                         : yes 
-Checking for 'lv2' >= 1.18.6                         : yes 
-Checking for 'serd-0' >= 0.14.0                      : yes 
-Checking for 'sord-0' >= 0.8.0                       : yes 
-Checking for 'sratom-0' >= 0.2.0                     : yes 
-Checking for 'lilv-0' >= 0.24.2                      : yes 
-Checking for 'ogg' >= 1.1.2                          : yes 
-Checking for 'flac' >= 1.2.1                         : yes 
-Checking for 'fftw3f' >= 3.3.5                       : yes 
-Checking for header sys/vfs.h                        : yes 
-Checking for header sys/statvfs.h                    : yes 
-Checking for 'ioprio_set' syscall support            : no 
-Checking for header boost/ptr_container/ptr_list.hpp : yes 
-Checking for 'samplerate' >= 0.1.7                   : yes 
-Checking for 'lv2' >= 1.0.0                          : yes 
-Checking for 'cairo' >= 1.12.0                       : yes 
-Checking for 'gthread-2.0' >= 2.10.1                 : yes 
-Checking for 'pangoft2' >= 1.36.8                    : yes 
-Checking for 'fontconfig'                            : yes 
-Checking for header unistd.h                         : yes 
-Checking for static libreadline                      : not found 
-Checking for libreadline                             : yes 
- * build session-utils                               : yes 
-Checking for 'dbus-1'                                : yes 
- * Build documentation                               : False 
- * Debuggable build                                  : True 
- * Export all symbols (backtrace)                    : False 
- * Install prefix                                    : /usr/local 
- * Strict compiler flags                             : [] 
- * Internal Shared Libraries                         : True 
- * Use External Libraries                            : False 
- * Library exports hidden                            : True 
- * Free/Demo copy                                    : False 
- * ALSA DBus Reservation                             : True 
- * Architecture flags                                : None 
- * ARM NEON support                                  : False 
- * Aubio                                             : True 
- * AudioUnits                                        : False 
- * Build target                                      : x86_64 
- * Canvas Test UI                                    : False 
- * Beatbox test app                                  : False 
- * CoreAudio                                         : False 
- * Debug RT allocations                              : False 
- * Debug Symbols                                     : True 
- * Denormal exceptions                               : False 
- * Dr. Mingw                                         : False 
- * FLAC                                              : True 
- * FPU optimization                                  : True 
- * FPU AVX512F support                               : True 
- * FPU AVX/FMA support                               : True 
- * Futex Semaphore                                   : True 
- * Freedesktop files                                 : False 
- * G_ENABLE_DEBUG                                    : True 
- * I/O Priority Set                                  : False 
- * Libjack linking                                   : link 
- * Libjack metadata                                  : True 
- * Lua Binding Doc                                   : False 
- * Lua Commandline Tool                              : True 
- * LV2 UI embedding                                  : True 
- * LV2 support                                       : True 
- * LV2 extensions                                    : True 
- * LXVST support                                     : True 
- * Mac VST support                                   : False 
- * NI-Maschine                                       : False 
- * OGG                                               : True 
- * Phone home                                        : True 
- * Program name                                      : Ardour 
- * Samplerate                                        : True 
- * PT format                                         : False 
- * PTW32 Semaphore                                   : False 
- * Threaded WaveViews                                : True 
- * Translation                                       : True 
- * Unit tests                                        : False 
- * Use LLD linker                                    : False 
- * VST3 support                                      : True 
- * Windows VST support                               : False 
- * Wiimote support                                   : False 
- * Windows key                                       : Mod4><Super 
- * PortAudio Backend                                 : False 
- * CoreAudio/Midi Backend                            : False 
- * ALSA Backend                                      : True 
- * Dummy backend                                     : True 
- * JACK Backend                                      : True 
- * PulseAudio Backend                                : True 
- * Buildstack                                        : -system- 
- * Mac i386 Architecture                             : False 
- * Mac ppc Architecture                              : False 
- * Mac arm64 Architecture                            : False 
- * C compiler flags                                  : ['-I/home/jamie/projects/xdaw/examples/ardour', '-DHAVE_RF64_RIFF', '-DCOMPILER_INT128_SUPPORT', '-DWAF_BUILD', '-g', '-fshow-column', '-DG_ENABLE_DEBUG', '-DARCH_X86', '-mmmx', '-msse', '-mfpmath=sse', '-DUSE_XMMINTRIN', '-DBUILD_SSE_OPTIMIZATIONS', '-DLXVST_64BIT', '-Wall', '-Wpointer-arith', '-Wcast-qual', '-Wcast-align', '-Wno-unused-parameter', '-DBOOST_SYSTEM_NO_DEPRECATED', '-D_ISOC9X_SOURCE', '-D_LARGEFILE64_SOURCE', '-D_FILE_OFFSET_BITS=64', '-DPROGRAM_NAME="Ardour"', '-DPROGRAM_VERSION="9"', '-Wstrict-prototypes', '-Wmissing-prototypes', '-D_POSIX_C_SOURCE=200809L'] 
- * C++ compiler flags                                : ['-I/home/jamie/projects/xdaw/examples/ardour', '-DHAVE_RF64_RIFF', '-DCOMPILER_INT128_SUPPORT', '-DWAF_BUILD', '-g', '-fshow-column', '-DG_ENABLE_DEBUG', '-DARCH_X86', '-mmmx', '-msse', '-mfpmath=sse', '-DUSE_XMMINTRIN', '-DBUILD_SSE_OPTIMIZATIONS', '-DLXVST_64BIT', '-Wall', '-Wpointer-arith', '-Wcast-qual', '-Wcast-align', '-Wno-unused-parameter', '-DBOOST_SYSTEM_NO_DEPRECATED', '-D_ISOC9X_SOURCE', '-D_LARGEFILE64_SOURCE', '-D_FILE_OFFSET_BITS=64', '-DPROGRAM_NAME="Ardour"', '-DPROGRAM_VERSION="9"', '-Woverloaded-virtual', '-Wno-unused-local-typedefs', '-Wno-deprecated-copy', '-D__STDC_LIMIT_MACROS', '-D__STDC_FORMAT_MACROS', '-DCANVAS_DEBUG', '-DBOOST_ERROR_CODE_HEADER_ONLY'] 
- * Linker flags                                      : [''] 
-
-'configure' finished successfully (20.452s)
 Waf: Entering directory `/home/jamie/projects/xdaw/examples/ardour/build'
-Git version: 9.0-rc3-138-g7a89eb313b
+Git version: 9.0-rc3-139-g1ae8df09db
 
-Writing revision info to libs/ardour/revision.cc using 9.0-rc3-138-g7a89eb313b, 2026-01-31
-[  67/1878] Linking build/libs/pbd/libpbd.so
-[ 111/1878] Linking build/libs/tk/ztk/libztk.so
-[ 128/1878] Linking build/libs/tk/ydk-pixbuf/libydk-pixbuf.so
-[ 207/1878] Linking build/libs/lua/libliblua.a
-[ 449/1878] Linking build/libs/tk/suil/libsuil.so
-[ 579/1878] Linking build/libs/zita-resampler/libzita-resampler.a
-[ 580/1878] Linking build/libs/fluidsynth/liblibfluidsynth.a
-[ 581/1878] Linking build/libs/libltc/liblibltc.a
-[ 582/1878] Linking build/libs/zita-convolver/libzita-convolver.a
-[ 583/1878] Linking build/libs/staffpad/libstaffpad.a
-[ 584/1878] Compiling libs/ardour/element_import_handler.cc
-[ 585/1878] Compiling libs/ardour/debug.cc
-[ 593/1878] Compiling libs/ardour/delivery.cc
-[ 607/1878] Linking build/libs/tk/ydk/libydk.so
-[ 608/1878] Linking build/libs/tk/ztkmm/libztkmm.so
-[ 609/1878] Linking build/libs/temporal/libtemporal.so
-[ 610/1878] Linking build/libs/tk/ytk/libytk.so
-[ 611/1878] Compiling libs/ardour/vst3_host.cc
-[ 612/1878] Linking build/libs/ptformat/libptformat.so
-[ 613/1878] Linking build/libs/audiographer/libaudiographer.so
-[ 614/1878] Linking build/libs/evoral/libsmf.a
-[ 615/1878] Linking build/libs/tk/ydkmm/libydkmm.so
-[ 616/1878] Compiling libs/ardour/sse_functions_64bit.s
-as: invalid option -- 'H'
+Writing revision info to libs/ardour/revision.cc using 9.0-rc3-139-g1ae8df09db, 2026-01-31
+[ 563/1878] Compiling libs/ardour/enums.cc
+[ 566/1878] Compiling libs/ardour/ebur128_analysis.cc
+[ 568/1878] Compiling libs/ardour/dsp_filter.cc
+[ 572/1878] Compiling libs/ardour/xdaw_server.cc
+[ 631/1878] Compiling libs/ardour/disk_io.cc
+[ 633/1878] Compiling libs/ardour/delivery.cc
+[ 634/1878] Compiling libs/ardour/default_click.cc
+[ 635/1878] Compiling libs/ardour/event_type_map.cc
+[ 636/1878] Compiling libs/ardour/selection.cc
+[ 637/1878] Compiling libs/ardour/vumeterdsp.cc
+../libs/ardour/xdaw_server.cc:278:13: warning: ‘ARDOUR::PluginType ARDOUR::xdaw_to_ardour_plugin_type(xdaw::PluginFormat)’ defined but not used [-Wunused-function]
+  278 | static auto xdaw_to_ardour_plugin_type(xdaw::PluginFormat format) -> PluginType {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~
 
+[ 638/1878] Compiling libs/ardour/video_tools_paths.cc
+[ 639/1878] Compiling libs/ardour/rt_tasklist.cc
+[ 641/1878] Compiling libs/ardour/zeroconf.cc
+[ 642/1878] Compiling libs/ardour/vca_manager.cc
+[ 645/1878] Compiling libs/ardour/vca.cc
+[ 646/1878] Compiling libs/ardour/route_group.cc
+[ 647/1878] Compiling libs/ardour/utils.cc
+[ 648/1878] Compiling libs/ardour/triggerbox.cc
+[ 649/1878] Compiling libs/ardour/transpose.cc
+[ 650/1878] Compiling libs/ardour/transform.cc
+[ 651/1878] Compiling libs/ardour/record_safe_control.cc
+[ 652/1878] Compiling libs/ardour/readonly_control.cc
+[ 653/1878] Compiling libs/ardour/track.cc
+[ 654/1878] Compiling libs/ardour/ticker.cc
+[ 655/1878] Compiling libs/ardour/thread_buffers.cc
+[ 656/1878] Compiling libs/ardour/thawlist.cc
+[ 657/1878] Compiling libs/ardour/template_utils.cc
+[ 658/1878] Compiling libs/ardour/tailtime.cc
+../libs/ardour/triggerbox.cc:1172:2: warning: #warning when Global Quantize is implemented, use that instead of '1 bar' here [-Wcpp]
+ 1172 | #warning when Global Quantize is implemented, use that instead of '1 bar' here
+      |  ^~~~~~~
+../libs/ardour/triggerbox.cc:3310:2: warning: #warning paul, please remove these debug messages [-Wcpp]
+ 3310 | #warning paul, please remove these debug messages
+      |  ^~~~~~~
+
+[ 659/1878] Compiling libs/ardour/processor.cc
+[ 660/1878] Compiling libs/ardour/rt_midibuffer.cc
+[ 661/1878] Compiling libs/ardour/system_exec.cc
+[ 662/1878] Compiling libs/ardour/surround_send.cc
+[ 663/1878] Compiling libs/ardour/surround_return.cc
+[ 664/1878] Compiling libs/ardour/strum.cc
+[ 665/1878] Compiling libs/ardour/strip_silence.cc
+[ 666/1878] Compiling libs/ardour/stripable.cc
+[ 667/1878] Compiling libs/ardour/polarity_processor.cc
+[ 668/1878] Compiling libs/ardour/plugin.cc
+In file included from /nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/forge.h:42,
+                 from ../libs/ardour/ardour/surround_return.h:24,
+                 from ../libs/ardour/surround_return.cc:29:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:73:10: warning: cast from type ‘const LV2_Atom_Sequence_Body*’ to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   73 |   return (LV2_Atom_Event*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_end(const LV2_Atom_Sequence_Body*, uint32_t)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:80:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   80 |   return (LV2_Atom_Event*)((const uint8_t*)body + lv2_atom_pad_size(size));
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_next(const LV2_Atom_Event*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:96:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   96 |   return (LV2_Atom_Event*)((const uint8_t*)i + sizeof(LV2_Atom_Event) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   97 |                            lv2_atom_pad_size(i->body.size));
+      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../libs/ardour/ardour/surround_return.h:23:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_begin(const LV2_Atom_Tuple*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:77:48: warning: cast from type ‘const LV2_Atom_Tuple*’ to type ‘uint8_t*’ {aka ‘unsigned char*’} casts away qualifiers [-Wcast-qual]
+   77 | #define LV2_ATOM_CONTENTS(type, atom) ((void*)((uint8_t*)(atom) + sizeof(type)))
+      |                                                ^~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:89:29: note: in expansion of macro ‘LV2_ATOM_CONTENTS’
+   89 | #define LV2_ATOM_BODY(atom) LV2_ATOM_CONTENTS(LV2_Atom, atom)
+      |                             ^~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:181:22: note: in expansion of macro ‘LV2_ATOM_BODY’
+  181 |   return (LV2_Atom*)(LV2_ATOM_BODY(tup));
+      |                      ^~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_next(const LV2_Atom*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:195:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom*’ casts away qualifiers [-Wcast-qual]
+  195 |   return (LV2_Atom*)((const uint8_t*)i + sizeof(LV2_Atom) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  196 |                      lv2_atom_pad_size(i->size));
+      |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_begin(const LV2_Atom_Object_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:235:10: warning: cast from type ‘const LV2_Atom_Object_Body*’ to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  235 |   return (LV2_Atom_Property_Body*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_next(const LV2_Atom_Property_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:253:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  253 |   return (LV2_Atom_Property_Body*)((const uint8_t*)i +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  254 |                                    lv2_atom_pad_size(
+      |                                    ~~~~~~~~~~~~~~~~~~
+  255 |                                      (uint32_t)sizeof(LV2_Atom_Property_Body) +
+      |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  256 |                                      value->size));
+      |                                      ~~~~~~~~~~~~~
+
+[ 669/1878] Compiling libs/ardour/speakers.cc
+[ 670/1878] Compiling libs/ardour/sp_stretch.cc
+[ 671/1878] Compiling libs/ardour/source_factory.cc
+[ 672/1878] Compiling libs/ardour/source.cc
+[ 673/1878] Compiling libs/ardour/soundcloud_upload.cc
+[ 674/1878] Compiling libs/ardour/solo_safe_control.cc
+[ 675/1878] Compiling libs/ardour/playlist.cc
+[ 676/1878] Compiling libs/ardour/solo_mute_release.cc
+[ 678/1878] Compiling libs/ardour/solo_control.cc
+[ 679/1878] Compiling libs/ardour/sndfilesource.cc
+[ 680/1878] Compiling libs/ardour/sndfileimportable.cc
+[ 681/1878] Compiling libs/ardour/smf_source.cc
+[ 682/1878] Compiling libs/ardour/slavable_automation_control.cc
+[ 683/1878] Compiling libs/ardour/operations.cc
+[ 684/1878] Compiling libs/ardour/muteable.cc
+[ 685/1878] Compiling libs/ardour/sidechain.cc
+[ 686/1878] Compiling libs/ardour/session_transport.cc
+[ 687/1878] Compiling libs/ardour/session_time.cc
+[ 688/1878] Compiling libs/ardour/session_state_utils.cc
+[ 689/1878] Compiling libs/ardour/session_state.cc
+[ 690/1878] Compiling libs/ardour/session_rtevents.cc
+[ 691/1878] Compiling libs/ardour/mp3fileimportable.cc
+[ 692/1878] Compiling libs/ardour/session_process.cc
+[ 693/1878] Compiling libs/ardour/session_object.cc
+[ 694/1878] Compiling libs/ardour/session_midi.cc
+[ 695/1878] Compiling libs/ardour/session_metadata.cc
+[ 696/1878] Compiling libs/ardour/session_handle.cc
+[ 697/1878] Compiling libs/ardour/session_export.cc
+[ 698/1878] Compiling libs/ardour/session_events.cc
+[ 699/1878] Compiling libs/ardour/minibpm.cc
+[ 700/1878] Compiling libs/ardour/midi_track.cc
+[ 701/1878] Compiling libs/ardour/session_configuration.cc
+[ 702/1878] Compiling libs/ardour/session_command.cc
+[ 703/1878] Compiling libs/ardour/session_click.cc
+[ 704/1878] Compiling libs/ardour/session_butler.cc
+[ 705/1878] Compiling libs/ardour/session_bundles.cc
+[ 706/1878] Compiling libs/ardour/session.cc
+[ 707/1878] Compiling libs/ardour/midi_scene_changer.cc
+[ 708/1878] Compiling libs/ardour/send.cc
+[ 709/1878] Compiling libs/ardour/segment_descriptor.cc
+[ 710/1878] Compiling libs/ardour/search_paths.cc
+[ 711/1878] Compiling libs/ardour/scene_change.cc
+[ 712/1878] Compiling libs/ardour/rt_task.cc
+[ 713/1878] Compiling libs/ardour/rb_effect.cc
+[ 714/1878] Compiling libs/ardour/route_group_member.cc
+[ 715/1878] Compiling libs/ardour/midi_clock_slave.cc
+[ 716/1878] Compiling libs/ardour/meter.cc
+[ 717/1878] Compiling libs/ardour/lua_api.cc
+[ 718/1878] Compiling libs/ardour/route.cc
+[ 719/1878] Compiling libs/ardour/reverse.cc
+In file included from /nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/forge.h:42,
+                 from ../libs/ardour/ardour/surround_return.h:24,
+                 from ../libs/ardour/session.cc:125:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:73:10: warning: cast from type ‘const LV2_Atom_Sequence_Body*’ to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   73 |   return (LV2_Atom_Event*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_end(const LV2_Atom_Sequence_Body*, uint32_t)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:80:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   80 |   return (LV2_Atom_Event*)((const uint8_t*)body + lv2_atom_pad_size(size));
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_next(const LV2_Atom_Event*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:96:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   96 |   return (LV2_Atom_Event*)((const uint8_t*)i + sizeof(LV2_Atom_Event) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   97 |                            lv2_atom_pad_size(i->body.size));
+      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../libs/ardour/ardour/surround_return.h:23:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_begin(const LV2_Atom_Tuple*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:77:48: warning: cast from type ‘const LV2_Atom_Tuple*’ to type ‘uint8_t*’ {aka ‘unsigned char*’} casts away qualifiers [-Wcast-qual]
+   77 | #define LV2_ATOM_CONTENTS(type, atom) ((void*)((uint8_t*)(atom) + sizeof(type)))
+      |                                                ^~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:89:29: note: in expansion of macro ‘LV2_ATOM_CONTENTS’
+   89 | #define LV2_ATOM_BODY(atom) LV2_ATOM_CONTENTS(LV2_Atom, atom)
+      |                             ^~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:181:22: note: in expansion of macro ‘LV2_ATOM_BODY’
+  181 |   return (LV2_Atom*)(LV2_ATOM_BODY(tup));
+      |                      ^~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_next(const LV2_Atom*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:195:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom*’ casts away qualifiers [-Wcast-qual]
+  195 |   return (LV2_Atom*)((const uint8_t*)i + sizeof(LV2_Atom) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  196 |                      lv2_atom_pad_size(i->size));
+      |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_begin(const LV2_Atom_Object_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:235:10: warning: cast from type ‘const LV2_Atom_Object_Body*’ to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  235 |   return (LV2_Atom_Property_Body*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_next(const LV2_Atom_Property_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:253:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  253 |   return (LV2_Atom_Property_Body*)((const uint8_t*)i +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  254 |                                    lv2_atom_pad_size(
+      |                                    ~~~~~~~~~~~~~~~~~~
+  255 |                                      (uint32_t)sizeof(LV2_Atom_Property_Body) +
+      |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  256 |                                      value->size));
+      |                                      ~~~~~~~~~~~~~
+
+[ 720/1878] Compiling libs/ardour/return.cc
+[ 721/1878] Compiling libs/ardour/region.cc
+[ 722/1878] Compiling libs/ardour/resampled_source.cc
+[ 723/1878] Compiling libs/ardour/region_fx_plugin.cc
+[ 724/1878] Compiling libs/ardour/region_factory.cc
+[ 725/1878] Compiling libs/ardour/record_enable_control.cc
+In file included from /nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/forge.h:42,
+                 from ../libs/ardour/ardour/surround_return.h:24,
+                 from ../libs/ardour/route.cc:98:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:73:10: warning: cast from type ‘const LV2_Atom_Sequence_Body*’ to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   73 |   return (LV2_Atom_Event*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_end(const LV2_Atom_Sequence_Body*, uint32_t)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:80:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   80 |   return (LV2_Atom_Event*)((const uint8_t*)body + lv2_atom_pad_size(size));
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_next(const LV2_Atom_Event*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:96:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   96 |   return (LV2_Atom_Event*)((const uint8_t*)i + sizeof(LV2_Atom_Event) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   97 |                            lv2_atom_pad_size(i->body.size));
+      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../libs/ardour/ardour/surround_return.h:23:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_begin(const LV2_Atom_Tuple*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:77:48: warning: cast from type ‘const LV2_Atom_Tuple*’ to type ‘uint8_t*’ {aka ‘unsigned char*’} casts away qualifiers [-Wcast-qual]
+   77 | #define LV2_ATOM_CONTENTS(type, atom) ((void*)((uint8_t*)(atom) + sizeof(type)))
+      |                                                ^~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:89:29: note: in expansion of macro ‘LV2_ATOM_CONTENTS’
+   89 | #define LV2_ATOM_BODY(atom) LV2_ATOM_CONTENTS(LV2_Atom, atom)
+      |                             ^~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:181:22: note: in expansion of macro ‘LV2_ATOM_BODY’
+  181 |   return (LV2_Atom*)(LV2_ATOM_BODY(tup));
+      |                      ^~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_next(const LV2_Atom*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:195:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom*’ casts away qualifiers [-Wcast-qual]
+  195 |   return (LV2_Atom*)((const uint8_t*)i + sizeof(LV2_Atom) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  196 |                      lv2_atom_pad_size(i->size));
+      |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_begin(const LV2_Atom_Object_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:235:10: warning: cast from type ‘const LV2_Atom_Object_Body*’ to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  235 |   return (LV2_Atom_Property_Body*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_next(const LV2_Atom_Property_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:253:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  253 |   return (LV2_Atom_Property_Body*)((const uint8_t*)i +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  254 |                                    lv2_atom_pad_size(
+      |                                    ~~~~~~~~~~~~~~~~~~
+  255 |                                      (uint32_t)sizeof(LV2_Atom_Property_Body) +
+      |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  256 |                                      value->size));
+      |                                      ~~~~~~~~~~~~~
+
+[ 726/1878] Compiling libs/ardour/recent_sessions.cc
+[ 727/1878] Compiling libs/ardour/raw_midi_parser.cc
+[ 728/1878] Compiling libs/ardour/readable.cc
+[ 729/1878] Compiling libs/ardour/rc_configuration.cc
+[ 730/1878] Compiling libs/ardour/kmeterdsp.cc
+[ 731/1878] Compiling libs/ardour/quantize.cc
+[ 732/1878] Compiling libs/ardour/io.cc
+[ 733/1878] Compiling libs/ardour/process_thread.cc
+[ 734/1878] Compiling libs/ardour/presentation_info.cc
+[ 735/1878] Compiling libs/ardour/port_set.cc
+[ 736/1878] Compiling libs/ardour/port_manager.cc
+[ 737/1878] Compiling libs/ardour/port_insert.cc
+[ 738/1878] Compiling libs/ardour/port_engine_shared.cc
+[ 739/1878] Compiling libs/ardour/import_pt.cc
+[ 740/1878] Compiling libs/ardour/port.cc
+[ 741/1878] Compiling libs/ardour/plugin_scan_result.cc
+[ 742/1878] Compiling libs/ardour/plugin_manager.cc
+[ 743/1878] Compiling libs/ardour/plugin_insert.cc
+[ 744/1878] Compiling libs/ardour/plug_insert_base.cc
+../libs/ardour/import_pt.cc: In member function ‘void ARDOUR::Session::import_pt_rest(PTFFormat&)’:
+../libs/ardour/import_pt.cc:354:36: warning: suggest parentheses around assignment used as truth value [-Wparentheses]
+  354 |                 if (existing_track = dynamic_pointer_cast<AudioTrack> (route_by_name (a->name))) {
+      |                     ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[ 745/1878] Compiling libs/ardour/playlist_source.cc
+[ 746/1878] Compiling libs/ardour/playlist_factory.cc
+[ 747/1878] Compiling libs/ardour/gain_control.cc
+[ 748/1878] Compiling libs/ardour/filter.cc
+[ 749/1878] Compiling libs/ardour/phase_control.cc
+[ 750/1878] Compiling libs/ardour/parameter_descriptor.cc
+[ 751/1878] Compiling libs/ardour/panner_shell.cc
+[ 752/1878] Compiling libs/ardour/panner_manager.cc
+[ 753/1878] Compiling libs/ardour/panner.cc
+[ 754/1878] Compiling libs/ardour/pannable.cc
+[ 755/1878] Compiling libs/ardour/ffmpegfilesource.cc
+[ 756/1878] Compiling libs/ardour/pan_controllable.cc
+[ 757/1878] Compiling libs/ardour/onset_detector.cc
+[ 758/1878] Compiling libs/ardour/mute_master.cc
+[ 759/1878] Compiling libs/ardour/mute_control.cc
+[ 760/1878] Compiling libs/ardour/mtdm.cc
+[ 761/1878] Compiling libs/ardour/mtc_slave.cc
+[ 762/1878] Compiling libs/ardour/mp3filesource.cc
+[ 763/1878] Compiling libs/ardour/export_graph_builder.cc
+[ 764/1878] Compiling libs/ardour/export_format_base.cc
+[ 765/1878] Compiling libs/ardour/monitor_return.cc
+[ 766/1878] Compiling libs/ardour/monitor_processor.cc
+[ 767/1878] Compiling libs/ardour/monitor_port.cc
+[ 768/1878] Compiling libs/ardour/mode.cc
+[ 769/1878] Compiling libs/ardour/monitor_control.cc
+[ 770/1878] Compiling libs/ardour/mixer_scene.cc
+[ 771/1878] Compiling libs/ardour/export_channel.cc
+[ 772/1878] Compiling libs/ardour/mix.cc
+[ 773/1878] Compiling libs/ardour/midiport_manager.cc
+[ 774/1878] Compiling libs/ardour/mididm.cc
+[ 775/1878] Compiling libs/ardour/midi_ui.cc
+[ 776/1878] Compiling libs/ardour/midi_stretch.cc
+[ 777/1878] Compiling libs/ardour/velocity_control.cc
+[ 778/1878] Compiling libs/ardour/midi_source.cc
+[ 779/1878] Compiling libs/ardour/midi_scene_change.cc
+[ 780/1878] Compiling libs/ardour/midi_ring_buffer.cc
+[ 781/1878] Compiling libs/ardour/midi_region.cc
+[ 782/1878] Compiling libs/ardour/midi_port.cc
+[ 783/1878] Compiling libs/ardour/midi_playlist.cc
+[ 784/1878] Compiling libs/ardour/midi_patch_manager.cc
+[ 785/1878] Compiling libs/ardour/midi_model.cc
+[ 786/1878] Compiling libs/ardour/midi_channel_filter.cc
+[ 787/1878] Compiling libs/ardour/midi_buffer.cc
+[ 788/1878] Compiling libs/ardour/midi_automation_list_binder.cc
+[ 789/1878] Compiling libs/ardour/lufs_meter.cc
+[ 790/1878] Compiling libs/ardour/luascripting.cc
+[ 791/1878] Compiling libs/ardour/luaproc.cc
+[ 792/1878] Compiling libs/ardour/ltc_slave.cc
+[ 793/1878] Compiling libs/ardour/ltc_file_reader.cc
+[ 794/1878] Compiling libs/ardour/location.cc
+[ 795/1878] Compiling libs/ardour/library.cc
+[ 796/1878] Compiling libs/ardour/legatize.cc
+[ 797/1878] Compiling libs/ardour/latent.cc
+[ 798/1878] Compiling libs/ardour/ladspa_plugin.cc
+[ 799/1878] Compiling libs/ardour/io_tasklist.cc
+[ 800/1878] Compiling libs/ardour/io_processor.cc
+[ 801/1878] Compiling libs/ardour/io_plug.cc
+[ 802/1878] Compiling libs/ardour/internal_send.cc
+[ 803/1878] Compiling libs/ardour/internal_return.cc
+[ 804/1878] Compiling libs/ardour/instrument_info.cc
+[ 805/1878] Compiling libs/ardour/import.cc
+[ 806/1878] Compiling libs/ardour/iec1ppmdsp.cc
+[ 807/1878] Compiling libs/ardour/iec2ppmdsp.cc
+[ 808/1878] Compiling libs/ardour/graph_edges.cc
+[ 809/1878] Compiling libs/ardour/graphnode.cc
+[ 810/1878] Compiling libs/ardour/graph.cc
+[ 811/1878] Compiling libs/ardour/globals.cc
+[ 812/1878] Compiling libs/ardour/midi_state_tracker.cc
+[ 813/1878] Compiling libs/ardour/fixed_delay.cc
+[ 814/1878] Compiling libs/ardour/find_session.cc
+[ 815/1878] Compiling libs/ardour/filesystem_paths.cc
+[ 816/1878] Compiling libs/ardour/filename_extensions.cc
+[ 817/1878] Compiling libs/ardour/file_source.cc
+[ 818/1878] Compiling libs/ardour/ffmpegfileimportable.cc
+[ 819/1878] Compiling libs/ardour/export_timespan.cc
+[ 820/1878] Compiling libs/ardour/export_status.cc
+[ 821/1878] Compiling libs/ardour/export_smf_writer.cc
+[ 822/1878] Compiling libs/ardour/export_profile_manager.cc
+[ 823/1878] Compiling libs/ardour/export_preset.cc
+[ 824/1878] Compiling libs/ardour/export_handler.cc
+[ 825/1878] Compiling libs/ardour/export_formats.cc
+[ 826/1878] Compiling libs/ardour/export_format_specification.cc
+[ 827/1878] Compiling libs/ardour/export_format_manager.cc
+[ 828/1878] Compiling libs/ardour/export_filename.cc
+In file included from /nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/forge.h:42,
+                 from ../libs/ardour/ardour/surround_return.h:24,
+                 from ../libs/ardour/export_handler.cc:44:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:73:10: warning: cast from type ‘const LV2_Atom_Sequence_Body*’ to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   73 |   return (LV2_Atom_Event*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_end(const LV2_Atom_Sequence_Body*, uint32_t)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:80:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   80 |   return (LV2_Atom_Event*)((const uint8_t*)body + lv2_atom_pad_size(size));
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Event* lv2_atom_sequence_next(const LV2_Atom_Event*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:96:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Event*’ casts away qualifiers [-Wcast-qual]
+   96 |   return (LV2_Atom_Event*)((const uint8_t*)i + sizeof(LV2_Atom_Event) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   97 |                            lv2_atom_pad_size(i->body.size));
+      |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../libs/ardour/ardour/surround_return.h:23:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_begin(const LV2_Atom_Tuple*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:77:48: warning: cast from type ‘const LV2_Atom_Tuple*’ to type ‘uint8_t*’ {aka ‘unsigned char*’} casts away qualifiers [-Wcast-qual]
+   77 | #define LV2_ATOM_CONTENTS(type, atom) ((void*)((uint8_t*)(atom) + sizeof(type)))
+      |                                                ^~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/atom.h:89:29: note: in expansion of macro ‘LV2_ATOM_CONTENTS’
+   89 | #define LV2_ATOM_BODY(atom) LV2_ATOM_CONTENTS(LV2_Atom, atom)
+      |                             ^~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:181:22: note: in expansion of macro ‘LV2_ATOM_BODY’
+  181 |   return (LV2_Atom*)(LV2_ATOM_BODY(tup));
+      |                      ^~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom* lv2_atom_tuple_next(const LV2_Atom*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:195:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom*’ casts away qualifiers [-Wcast-qual]
+  195 |   return (LV2_Atom*)((const uint8_t*)i + sizeof(LV2_Atom) +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  196 |                      lv2_atom_pad_size(i->size));
+      |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_begin(const LV2_Atom_Object_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:235:10: warning: cast from type ‘const LV2_Atom_Object_Body*’ to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  235 |   return (LV2_Atom_Property_Body*)(body + 1);
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h: In function ‘LV2_Atom_Property_Body* lv2_atom_object_next(const LV2_Atom_Property_Body*)’:
+/nix/store/pjg1hfsv2ygpp7w85iv7mm6h12z9990n-lv2-1.18.10-dev/include/lv2/atom/util.h:253:10: warning: cast from type ‘const uint8_t*’ {aka ‘const unsigned char*’} to type ‘LV2_Atom_Property_Body*’ casts away qualifiers [-Wcast-qual]
+  253 |   return (LV2_Atom_Property_Body*)((const uint8_t*)i +
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  254 |                                    lv2_atom_pad_size(
+      |                                    ~~~~~~~~~~~~~~~~~~
+  255 |                                      (uint32_t)sizeof(LV2_Atom_Property_Body) +
+      |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  256 |                                      value->size));
+      |                                      ~~~~~~~~~~~~~
+
+[ 829/1878] Compiling libs/ardour/export_failed.cc
+[ 830/1878] Compiling libs/ardour/export_channel_configuration.cc
+[ 831/1878] Compiling libs/ardour/fluid_synth.cc
+[ 832/1878] Compiling libs/ardour/audio_library.cc
+[ 833/1878] Compiling libs/ardour/vst3_scan.cc
+[ 834/1878] Compiling libs/ardour/vst3_module.cc
+[ 835/1878] Compiling libs/ardour/delayline.cc
+[ 836/1878] Compiling libs/ardour/audiofilesource.cc
+[ 837/1878] Compiling libs/ardour/lv2_plugin.cc
+[ 838/1878] Compiling libs/ardour/vst3_plugin.cc
+../libs/ardour/lv2_plugin.cc:123:10: fatal error: serd/serd.h: No such file or directory
+  123 | #include <serd/serd.h>
+      |          ^~~~~~~~~~~~~
+compilation terminated.
+
+Waf: Leaving directory `/home/jamie/projects/xdaw/examples/ardour/build'
+Build failed
+ -> task in 'libardour' failed with exit status 1 (run with -v to display more information)
