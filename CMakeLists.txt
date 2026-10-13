@@ -67,6 +67,7 @@ set(ARDOUR_DLLDIR "${CMAKE_INSTALL_FULL_LIBDIR}/${ARDOUR_LWRCASE_DIRNAME}")
 set(ARDOUR_DATADIR "${CMAKE_INSTALL_FULL_DATADIR}/${ARDOUR_LWRCASE_DIRNAME}")
 set(ARDOUR_CONFDIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${ARDOUR_LWRCASE_DIRNAME}")
 set(ARDOUR_LOCALEDIR "${ARDOUR_DATADIR}/locale")
+set(ARDOUR_LV2DIR "${ARDOUR_DLLDIR}/LV2" CACHE PATH "Install destination for the bundled LV2 plugins (waf --lv2dir)")
 
 # --- libraries, bottom-up ---------------------------------------------------
 # waf walks its 'children' list in a fixed order and resolves 'use' lazily, so
@@ -120,3 +121,4 @@ add_subdirectory(libs/vfork)
 if (APPLE)
     add_subdirectory(libs/auscan)
 endif ()
+add_subdirectory(libs/plugins)

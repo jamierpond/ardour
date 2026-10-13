@@ -358,6 +358,11 @@ ardour_define(HAVE_LIBJPEG 1)
 # libs/tk/ydk
 ardour_check_pkg(PANGO pango ATLEAST 1.20)
 ardour_check_pkg(CAIRO cairo ATLEAST 1.12)
+# Deviation: pkg-config's cairo cflags point *into* include/cairo, but the
+# bundled LV2 plugins include <cairo/cairo.h>. waf builds only get that from a
+# global include of the shared prefix (Ardour's stack, or --also-include);
+# here the package's own includedir is added to the CAIRO uselib instead.
+target_include_directories(ardour-uselib-CAIRO INTERFACE "${ARDOUR_PKG_CAIRO_INCLUDEDIR}")
 ardour_check_pkg(PANGOCAIRO pangocairo)
 
 # libs/tk/ytk
