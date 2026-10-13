@@ -74,12 +74,12 @@ foreach (entry IN LISTS _pkgs)
     endforeach ()
 endforeach ()
 
-# libs/audiographer: LIB_FFTW3F += fftw3f_threads (fftw >= 3.3.5, not Windows).
-# waf mutates the shared uselib, so every FFTW3F user links it.
-if (NOT WIN32)
-    find_library(_fftw3f_threads fftw3f_threads HINTS ${PKG_FFTW3F_LIBRARY_DIRS} REQUIRED)
-    set_property(TARGET PkgConfig::PKG_FFTW3F APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${_fftw3f_threads}")
-endif ()
+# LIB_FFTW3F += fftw3f_threads (fftw >= 3.3.5): libs/audiographer adds it
+# except for mingw, gtk2_ardour adds it for a native (non-cross) mingw build,
+# so it is on for both platforms here. waf mutates the shared uselib, so every
+# FFTW3F user links it.
+find_library(_fftw3f_threads fftw3f_threads HINTS ${PKG_FFTW3F_LIBRARY_DIRS} REQUIRED)
+set_property(TARGET PkgConfig::PKG_FFTW3F APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${_fftw3f_threads}")
 
 # Deviation: the LV2 plugins include <cairo/cairo.h>, but pkg-config's cflags
 # point inside include/cairo; waf only finds it through a shared prefix on the
