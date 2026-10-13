@@ -45,6 +45,7 @@ tags
 waf3-*
 .lock-waf*
 /build/
+/build-cmake*/
 /.cache
 /doc/html/
 /doc/latex/
@@ -152,3 +153,4 @@ waf3-*
 
 # misc custom files git should ignore
 /local
+build-cmake
