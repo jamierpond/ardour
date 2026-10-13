@@ -1,51 +1,15 @@
-# Port of libs/gtkmm2ext/wscript.
-
-ardour_add_library(gtkmm2ext SHARED)
-
-target_sources(gtkmm2ext PRIVATE
-        actions.cc
-        action_model.cc
-        application.cc
-        bindings.cc
-        cairo_packer.cc
-        cairo_theme.cc
-        cairo_widget.cc
-        cell_renderer_button.cc
-        cell_renderer_color_selector.cc
-        cell_renderer_pixbuf_multi.cc
-        cell_renderer_pixbuf_toggle.cc
-        colors.cc
-        colorspace.cc
-        cursors.cc
-        debug.cc
-        dndtreeview.cc
-        emscale.cc
-        gtk_ui.cc
-        gtkapplication.c
-        keyboard.cc
-        menu_elems.cc
-        persistent_tooltip.cc
-        string_completion.cc
-        textviewer.cc
-        treeutils.cc
-        ui_config.cc
-        utils.cc
-        visibility_tracker.cc
-        window_proxy.cc
-        window_title.cc)
-
-ardour_includes(gtkmm2ext PUBLIC .)
-ardour_uselib(gtkmm2ext XML CAIROMM PANGOMM GLIBMM GIOMM)
-ardour_use(gtkmm2ext pbd ydk ydkmm ytkmm)
-target_compile_definitions(gtkmm2ext PRIVATE
-        LIBGTKMM2EXT_DLL_EXPORTS
-        ABSTRACT_UI_EXPORTS
-        "PACKAGE=\"gtkmm2ext3\""
-        "LOCALEDIR=\"${ARDOUR_LOCALEDIR}\"")
-
+# libs/gtkmm2ext/wscript
 if (APPLE)
-    target_sources(gtkmm2ext PRIVATE gtkapplication_quartz.mm nsglview.mm)
-    ardour_uselib(gtkmm2ext OSX)
+    set(_platform gtkapplication_quartz.mm nsglview.mm)
 else ()
-    target_sources(gtkmm2ext PRIVATE gtkapplication_x11.c)
+    set(_platform gtkapplication_x11.c)
 endif ()
+ardour_target(gtkmm2ext SHARED GLOB
+        EXCLUDE gtkapplication_win32.c gtkapplication_x11.c gtkutils.cc sync-menu.c
+        SOURCES ${_platform}
+        INCLUDES .
+        EXPORT_INCLUDES .
+        USE pbd ydk ydkmm ytkmm
+        USELIB XML CAIROMM PANGOMM GLIBMM GIOMM OSX
+        DEFINES LIBGTKMM2EXT_DLL_EXPORTS ABSTRACT_UI_EXPORTS "PACKAGE=\"gtkmm2ext3\""
+                "LOCALEDIR=\"${ARDOUR_LOCALEDIR}\"")

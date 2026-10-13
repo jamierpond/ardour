@@ -1,27 +1,25 @@
-# Port of libs/appleutility/wscript.
-
-ardour_add_library(appleutility SHARED)
-
-target_sources(appleutility PRIVATE
-        CoreAudio/PublicUtility/AUOutputBL.cpp
-        CoreAudio/PublicUtility/AUParamInfo.cpp
-        CoreAudio/PublicUtility/CAAudioChannelLayout.cpp
-        CoreAudio/PublicUtility/CAAudioChannelLayoutObject.cpp
-        CoreAudio/PublicUtility/CAAudioUnit.cpp
-        CoreAudio/PublicUtility/CAAUParameter.cpp
-        CoreAudio/PublicUtility/CABufferList.cpp
-        CoreAudio/PublicUtility/CACFDictionary.cpp
-        CoreAudio/PublicUtility/CACFNumber.cpp
-        CoreAudio/PublicUtility/CACFString.cpp
-        CoreAudio/PublicUtility/CAComponent.cpp
-        CoreAudio/PublicUtility/CAComponentDescription.cpp
-        CoreAudio/PublicUtility/CADebugMacros.cpp
-        CoreAudio/PublicUtility/CAStreamBasicDescription.cpp
-        CoreAudio/PublicUtility/CAXException.cpp)
-
-ardour_includes(appleutility PRIVATE . INTERFACE CoreAudio/PublicUtility)
-ardour_uselib(appleutility AUDIOUNITS OSX)
-
-# "apple did not write this library with full symbol export control so we
-# need to override any visibility default."
-target_compile_options(appleutility PRIVATE -fvisibility=default)
+# libs/appleutility/wscript. -fvisibility=default: "apple did not write this
+# library with full symbol export control".
+set(_srcs
+        AUOutputBL.cpp
+        AUParamInfo.cpp
+        CAAudioChannelLayout.cpp
+        CAAudioChannelLayoutObject.cpp
+        CAAudioUnit.cpp
+        CAAUParameter.cpp
+        CABufferList.cpp
+        CACFDictionary.cpp
+        CACFNumber.cpp
+        CACFString.cpp
+        CAComponent.cpp
+        CAComponentDescription.cpp
+        CADebugMacros.cpp
+        CAStreamBasicDescription.cpp
+        CAXException.cpp)
+list(TRANSFORM _srcs PREPEND CoreAudio/PublicUtility/)
+ardour_target(appleutility SHARED
+        SOURCES ${_srcs}
+        INCLUDES .
+        EXPORT_INCLUDES CoreAudio/PublicUtility
+        USELIB AUDIOUNITS OSX
+        OPTIONS -fvisibility=default)
