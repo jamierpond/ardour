@@ -24,8 +24,11 @@ if (APPLE)
     target_link_libraries(coreaudio_backend PRIVATE
             "-framework CoreAudio" "-framework AudioToolbox" "-framework CoreServices" "-framework CoreMidi")
 else ()
+    # Deviation: waf links Ardour's own static portaudio (built with JACK)
+    # plus jack64; MSYS2's portaudio has no JACK host API, so the jack64
+    # import lib (absent there) is dropped.
     target_link_libraries(portaudio_callback_backend PRIVATE Ardour::PORTAUDIO
-            portaudio.a ole32 setupapi uuid winmm ksuser jack64)
+            portaudio.a ole32 setupapi uuid winmm ksuser)
     target_compile_definitions(portaudio_callback_backend PRIVATE
             USE_MMCSS_THREAD_PRIORITIES "BACKEND_NAME=\"PortAudio (default)\"")
 endif ()
