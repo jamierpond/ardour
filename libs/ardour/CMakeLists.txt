@@ -403,7 +403,7 @@ ardour_use(ardour ${_libardour_use})
 # revision.cc: waf's create_stored_revision() runs on every build; so does this
 # (the script only rewrites the file when HEAD moved).
 add_custom_target(ardour-revision
-        COMMAND "${ARDOUR_NODE}" "${PROJECT_SOURCE_DIR}/scripts/ardour-version.mjs"
+        COMMAND Python3::Interpreter "${PROJECT_SOURCE_DIR}/scripts/ardour-version.py"
                 --revision-cc "${CMAKE_CURRENT_BINARY_DIR}/revision.cc"
         BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/revision.cc"
         COMMENT "Updating libs/ardour/revision.cc"
