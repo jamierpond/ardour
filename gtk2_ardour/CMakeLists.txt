@@ -19,13 +19,14 @@ else ()
     set(_platform bundle_env_mingw.cc windows_vst_plugin_ui.cc vst3_hwnd_plugin_ui.cc
             "${CMAKE_CURRENT_BINARY_DIR}/windows_icon.rc")
     set(_defines WINDOWS_VST_SUPPORT)
+    set(_includes ../libs/fst)
 endif ()
 
 ardour_target(ardour-gui EXECUTABLE GLOB
         OUTPUT_NAME ardour-${ARDOUR_VERSION}
         EXCLUDE ${_exclude}
         SOURCES ${_platform} "${CMAKE_CURRENT_BINARY_DIR}/gtk2ardour-version.h"
-        INCLUDES . ../libs ../libs/vst3
+        INCLUDES . ${_includes} ../libs ../libs/vst3
         USE pbd ardour ardourcp temporal midipp gtkmm2ext canvas waveview widgets ptformat ytk ytkmm aaf
         USELIB ${_uselib}
         DEFINES "PACKAGE=\"gtk2_ardour${ARDOUR_VERSION_MAJOR}\"" "DATA_DIR=\"${ARDOUR_DATADIR}\""
