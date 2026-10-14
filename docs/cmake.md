@@ -34,9 +34,19 @@ exist prebuilt only for MinGW, via MSYS2, so the Windows build uses MSYS2's gcc:
 
 ```sh
 pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,cmake,ninja,pkgconf,nodejs,boost,glibmm,cairomm,pangomm,libsigc++,libsndfile,libsamplerate,curl,libarchive,liblo,taglib,vamp-plugin-sdk,rubberband,fftw,aubio,lv2,lilv,serd,sord,sratom,libxml2,flac,libogg,libvorbis,pango,libjpeg-turbo,libpng,libusb,libwebsockets,portaudio,gettext,readline}
-# in a UCRT64 shell:
-cmake -S . -B build-cmake -G Ninja && cmake --build build-cmake
+# in a UCRT64 shell (with core.autocrlf=input so the .in templates stay LF):
+cmake -S . -B build-cmake -G Ninja && cmake --build build-cmake -j 8
 ```
+
+Keep `-j` moderate. On a 64-thread box, full parallelism made gcc fail
+random `#include`s with "Invalid argument". That's a Windows filesystem
+problem, not a build error, and `-j 8` builds cleanly.
+
+MSVC/clang-cl isn't supported. The wscripts' MSVC path relies on a
+dependency stack built with MSVC (glibmm-2.4, sigc++-2, cairomm-1.0 and
+pangomm-1.4 among them). vcpkg and the other prebuilt sources ship only
+the newer glibmm-2.68/sigc++-3 ABI, so MSVC would need that whole stack
+built from source first.
 
 ## Layout
 
