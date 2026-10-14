@@ -8,19 +8,21 @@ if (APPLE)
     # older glib left it undefined on macOS, which this restores.
     set(_options -xobjective-c)
     set(_defines DISABLE_VISIBILITY)
+    set(_platform_includes quartz quartz/ydk ydk/quartz)
     set(_backend quartz)
 else ()
     file(GLOB _platform CONFIGURE_DEPENDS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" win32/*.c)
     list(REMOVE_ITEM _platform win32/gdktestutils-win32.c)
     set(_options -mms-bitfields -Wl,--export-all-symbols)
     set(_defines INSIDE_GDK_WIN32 DLL_EXPORT PIC)
+    set(_platform_includes win32 win32/ydk)
     set(_backend win32)
 endif ()
 
 ardour_target(ydk SHARED GLOB
         EXCLUDE gdkmedialib.c
         SOURCES ${_platform}
-        INCLUDES . ydk ${_backend} ${_backend}/ydk ydk/${_backend}
+        INCLUDES . ydk ${_platform_includes}
         EXPORT_INCLUDES . ydk ${_backend}
         USE ztk ydk-pixbuf
         USELIB GLIB PANGO CAIRO PANGOCAIRO OSX GIO-WINDOWS
